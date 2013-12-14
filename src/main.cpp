@@ -21,6 +21,9 @@ using namespace std;
 
 // General data -----------------------------------------------------------------------
 
+const SDL_Rect rcBtnWater = {736,0,64,64};
+const SDL_Rect rcBtnFood = {736,64,64,64};
+
 bool running;
 SDL_Event event;
 int lasttick, curtick;
@@ -36,7 +39,7 @@ Hamsi *hamsi;
 // Game state variables
 
 bool sidebarOut;
-int bottleWater; // 0..100
+float bottleWater; // 0..10
 bool bowlFood;
 
 // --- Functions --- -----------------------------------------------------------------------
@@ -53,15 +56,71 @@ inline bool inReachOf (int x, int y, int ox, int oy)
 	return ( x >= ox-10 && x <= ox+10 ) && ( y >= oy-10 && y <= oy+10 );
 }
 
+inline bool pointInBox (int x, int y, const SDL_Rect *rect)
+{
+	return x >= rect->x && x < rect->x+rect->w && y >= rect->y && y < rect->y+rect->h;
+}
+
+inline int randInt (int first, int last)
+{
+	return rand () % (last + 1 - first) + first;
+}
+
+void loadWater ()
+{
+	hamsi->water += 0.33;
+	hamsi->water = min (hamsi->water, 10.0f);
+}
+
+void exhaustWater ()
+{
+	hamsi->water -= 0.033;
+	hamsi->water = max (hamsi->water, 0.0f);
+}
+
+void loadFood ()
+{
+	hamsi->food += 0.33;
+	hamsi->food = min (hamsi->food, 10.0f);
+}
+
+void exhaustFood ()
+{
+	hamsi->food -= 0.033;
+	hamsi->food = max (hamsi->food, 0.0f);
+}
+
+void exhaustBottle ()
+{
+	bottleWater -= 0.05;
+	bottleWater = max (bottleWater, 0.0f);
+}
+
+void refreshBottle ()
+{
+	bottleWater = 10;
+}
+
+void moveHamsi ()
+{
+	hamsi->x += hamsi->vx;
+	hamsi->y += hamsi->vy;
+	/*
+	hamsi->x = min ((float)800-32, max ((float)0  +32, hamsi->x));
+	hamsi->y = min ((float)600-32, max ((float)300+32, hamsi->y));
+	*/
+}
+
 // State changes --------------------------------------------------------
 
 void hamsiEnterIdling ()
 {
-	cout << "enter idling" << endl;
 	hamsi->state = idlingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	hamsi->dwell = randInt (FPS*1, FPS*16);
+	cout << "enter idling for secs " << hamsi->dwell / (float)FPS << endl;
 }
 
 void hamsiEnterSleeping ()
@@ -80,13 +139,19 @@ void hamsiEnterEating ()
 
 void hamsiEnterWalking ()
 {
-	cout << "enter walking" << endl;
-	hamsi->vx = rand()%8 - 4;
-	hamsi->vy = rand()%2 - 1;
+	hamsi->destx = randInt (32, 800-32);
+	hamsi->desty = randInt (300, 600-32);
+	float dx = hamsi->destx - hamsi->x;
+	float dy = hamsi->desty - hamsi->y;
+	float dist = sqrt (dx*dx + dy*dy);
+	hamsi->vx = dx * walkSpeed / dist;
+	hamsi->vy = dy * walkSpeed / dist;
 	hamsi->state = walkingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	hamsi->dwell = dist / walkSpeed;
+	cout << "enter walking to " << hamsi->destx << " " << hamsi->desty << endl;
 }
 
 void hamsiEnterWheeling ()
@@ -96,16 +161,19 @@ void hamsiEnterWheeling ()
 
 void hamsiGoDrinking ()
 {
-	cout << "go drinking" << endl;
-	int dx = drinkPointX - hamsi->x;
-	int dy = drinkPointY - hamsi->y;
-	int d = sqrt ( dx*dx + dy*dy );
-	hamsi->vx = (float)dx * 5 / (float) d;
-	hamsi->vy = (float)dy * 5/ (float) d;
+	hamsi->destx = drinkPointX;
+	hamsi->desty = drinkPointY;
+	float dx = hamsi->destx - hamsi->x;
+	float dy = hamsi->desty - hamsi->y;
+	float dist = sqrt (dx*dx + dy*dy);
+	hamsi->vx = dx * walkSpeed / dist;
+	hamsi->vy = dy * walkSpeed / dist;
 	hamsi->state = goDrinkingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	hamsi->dwell = dist / walkSpeed;
+	cout << "go drinking" << endl;
 }
 
 void hamsiEnterDrinking ()
@@ -119,16 +187,19 @@ void hamsiEnterDrinking ()
 
 void hamsiGoEating ()
 {
-	cout << "go eating" << endl;
-	int dx = eatPointX - hamsi->x;
-	int dy = eatPointY - hamsi->y;
-	int d = sqrt ( dx*dx + dy*dy );
-	hamsi->vx = (float)dx * 5 / (float) d;
-	hamsi->vy = (float)dy * 5/ (float) d;
+	hamsi->destx = eatPointX;
+	hamsi->desty = eatPointY;
+	float dx = hamsi->destx - hamsi->x;
+	float dy = hamsi->desty - hamsi->y;
+	float dist = sqrt (dx*dx + dy*dy);
+	hamsi->vx = dx * walkSpeed / dist;
+	hamsi->vy = dy * walkSpeed / dist;
 	hamsi->state = goEatingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	hamsi->dwell = dist / walkSpeed;
+	cout << "go eating" << endl;
 }
 
 //////////////////////////////////////////////----------------------------------------------
@@ -140,17 +211,22 @@ void handleGameMoment ()
 	case idlingState:
 	
 		// actions
-		if (hamsi->lastchange > FPS*1) {
-			//hamsiEnterWalking ();
+		if (hamsi->lastchange > hamsi->dwell) {
+			hamsiEnterWalking ();
+		}
+		else if (hamsi->food < 5 && bowlFood) {
+			hamsiGoEating ();
+		}
+		else if (hamsi->water < 5 && bottleWater > 0) {
 			hamsiGoDrinking ();
 		}
 	
-		hamsi->food -= 0.005 ;
-		hamsi->water -= 0.01 ;
+		exhaustWater ();
+		exhaustFood ();
 	
 		// Animation
 		if (hamsi->anima == 0 && rand()%50 == 1) {
-			hamsi->anima = 1 + rand() % 2;
+			hamsi->anima = randInt (1,2);
 			hamsi->anictr = 0;
 		}
 		else if (hamsi->anima != 0 && hamsi->anictr > 5) {
@@ -162,15 +238,19 @@ void handleGameMoment ()
 	case walkingState:
 	
 		// actions
-		if (hamsi->lastchange > FPS*1) {
-			hamsiGoEating ();
+		if (hamsi->lastchange >= hamsi->dwell) {
+			hamsi->x = hamsi->destx;
+			hamsi->y = hamsi->desty;
+			hamsiEnterIdling ();
+			//hamsiGoEating ();
 		}
-	
-		hamsi->food -= 0.005 ;
-		hamsi->water -= 0.01 ;
 		
-		hamsi->x += hamsi->vx;
-		hamsi->y += hamsi->vy;
+	
+		exhaustWater ();
+		exhaustFood ();
+
+		
+		moveHamsi ();
 	
 		// Animation
 		if (hamsi->anictr > 2) {
@@ -184,21 +264,26 @@ void handleGameMoment ()
 	
 		// actions
 		if (hamsi->state == goDrinkingState) {
-			if (inReachOf (hamsi->x, hamsi->y, drinkPointX, drinkPointY)) {
+			if (hamsi->lastchange >= hamsi->dwell) {
+				hamsi->x = hamsi->destx;
+				hamsi->y = hamsi->desty;
 				hamsiEnterDrinking ();
 			}
 		}
 		else if (hamsi->state == goEatingState) {
-			if (inReachOf (hamsi->x, hamsi->y, eatPointX, eatPointY)) {
+			if (hamsi->lastchange >= hamsi->dwell) {
+				hamsi->x = hamsi->destx;
+				hamsi->y = hamsi->desty;
 				hamsiEnterEating ();
 			}
 		}
+	
+		exhaustWater ();
+		exhaustFood ();
 		
-		hamsi->food -= 0.005 ;
-		hamsi->water -= 0.01 ;
 		
-		hamsi->x += hamsi->vx;
-		hamsi->y += hamsi->vy;
+		
+		moveHamsi ();
 	
 		// Animation
 		if (hamsi->anictr > 2) {
@@ -211,8 +296,14 @@ void handleGameMoment ()
 	
 		// actions
 		if (hamsi->lastchange > FPS*2) {
-			hamsiGoEating ();
+			hamsiEnterWalking ();
 		}
+		
+		loadWater ();
+		exhaustFood ();
+		exhaustBottle ();
+		
+		cout << "water fuelness: " << bottleWater << endl;
 		
 		break;
 
@@ -220,8 +311,12 @@ void handleGameMoment ()
 	
 		// actions
 		if (hamsi->lastchange > FPS*2) {
-			hamsiEnterIdling ();
+			bowlFood = false;
+			hamsiEnterWalking ();
 		}
+		
+		exhaustWater ();
+		loadFood ();
 		
 		break;
 
@@ -237,14 +332,14 @@ void gameStage ()
 
 	// Preparation
 	sidebarOut = false;
-	bottleWater = 100;
+	bottleWater = 10;
 	bowlFood = true;
 	
 	hamsi = new Hamsi;
 	hamsi->x = 400;
 	hamsi->y = 400;
-	hamsi->food = 100;
-	hamsi->water = 100;
+	hamsi->food = 10;
+	hamsi->water = 10;
 	
 	hamsiEnterIdling ();
 	
@@ -259,7 +354,14 @@ void gameStage ()
 				running = false;
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				Mix_PlayChannel (-1, chord, 0);
+				if (pointInBox (event.button.x, event.button.y, &rcBtnWater)) {
+					refreshBottle ();
+					Mix_PlayChannel (-1, chord, 0);
+				}
+				else if (pointInBox (event.button.x, event.button.y, &rcBtnFood)) {
+					bowlFood = true;
+					Mix_PlayChannel (-1, chord, 0);
+				}
 				break;
 			case SDL_MOUSEMOTION:
 				if (!sidebarOut && event.motion.x > 800-16)

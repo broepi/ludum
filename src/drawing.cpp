@@ -17,7 +17,7 @@ using namespace std;
 
 extern Hamsi *hamsi;
 extern bool sidebarOut;
-extern int bottleWater; // 0..100
+extern float bottleWater;
 extern bool bowlFood;
 
 // Graphics -----------------------------------------------------------------------
@@ -27,7 +27,7 @@ Texture *hamsi1, *hamsi2, *hamsi3, *sleeping, *sleeping2, *walking, *walking2;
 Texture *drinking;
 Texture *omnomnom;
 Texture *wheel;
-Texture *bottle;
+Texture *bottleE, *bottleF;
 Texture *bowl, *bowl2;
 Texture *foodPoint, *waterPoint, *foodPointE, *waterPointE;
 Texture *btnFood, *btnWater;
@@ -47,7 +47,8 @@ void loadTextures ()
 	drinking = loadTexture ("res/drinking.png");
 	omnomnom = loadTexture ("res/omnomnom.png");
 	wheel = loadTexture ("res/wheel.png");
-	bottle = loadTexture ("res/bottle.png");
+	bottleE = loadTexture ("res/bottle.png");
+	bottleF = loadTexture ("res/bottleF.png");
 	bowl = loadTexture ("res/bowl.png");
 	bowl2 = loadTexture ("res/bowl2.png");
 	foodPoint = loadTexture ("res/foodpoint.png"); 
@@ -110,23 +111,37 @@ void drawGameScene ()
 		draw (bowl2, 720, 350, 63, 57);
 	else
 		draw (bowl, 720, 350, 63, 57);
+
+	// bottle
+	//SDL_Rect srcrect;
+	//SDL_Rect dstrect;
+	int x = 750;
+	int y = 500;
+	int cx = 32;
+	int cy = 125;
+	float a = 1.0 - bottleWater / 10.0;
+	float b = bottleWater / 10.0;
+	const int waterbarTotal = 100 - 11;
+	SDL_Rect srcrect = {0, 0, bottleE->w, 11 + waterbarTotal * a};
+	SDL_Rect dstrect = {x-cx, y-cy, bottleE->w, 11 + waterbarTotal * a};
+	SDL_Rect srcrectF = {0, 11 + waterbarTotal * a, bottleE->w, waterbarTotal * b + 28};
+	SDL_Rect dstrectF = {x-cx, y-cy + 11 + waterbarTotal * a, bottleE->w, waterbarTotal * b + 28};
+	SDL_RenderCopyEx (renderer, bottleE->tex, &srcrect, &dstrect, 0, 0, SDL_FLIP_NONE);
+	SDL_RenderCopyEx (renderer, bottleF->tex, &srcrectF, &dstrectF, 0, 0, SDL_FLIP_NONE);
 	
 	// hamsi
 	drawHamsi ();
-
-	// bottle
-	draw (bottle, 750, 500, 32, 125);
 	
 	// status bars
 	for (int i = 0; i<10; i++) {
 		// food
-		if (i*10 < hamsi->food)
+		if (i < hamsi->food)
 			tex = foodPoint;
 		else
 			tex = foodPointE;
 		draw (tex, i*28 + 16, 600 - 16, 0, 32);
 		// water
-		if (i*10 < hamsi->water)
+		if (i < hamsi->water)
 			tex = waterPoint;
 		else
 			tex = waterPointE;

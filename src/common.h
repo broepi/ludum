@@ -17,6 +17,13 @@
 #define eatPointX 721
 #define eatPointY 324
 
+#define hungerDec 0.033
+#define thirstDec 0.033
+#define hungerInc 0.33
+#define thirstInc 0.33
+
+#define walkSpeed 5
+
 
 // Classes .....................................................................
 
@@ -24,10 +31,14 @@ struct Hamsi {
 	float x, y;
 	int state;
 	int lastchange; // counts frames from last state change
-	float food;  // 0..100
-	float water; // 0..100
+	float food;  // 0..10
+	float water; // 0..10
 	
-	// walking state
+	// all states
+	int dwell; // for how many frames will the hamsi bro do this action
+	
+	// walking states
+	int destx, desty;
 	float vx, vy;
 	
 	int anima; // animation variant
