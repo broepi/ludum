@@ -3,9 +3,9 @@
 
 PROJECT = mygame
 CC = g++
-COMPFLAGS = $(shell pkg-config --cflags sdl2)
-LIBS = $(shell pkg-config --libs sdl2)
-LINKFLAGS = 
+COMPFLAGS = -I/usr/include/SDL2
+LIBS = -lSDL2_mixer -lSDL2
+LINKFLAGS =
 OBJECTS = $(subst src,build,$(subst .cpp,.o,$(wildcard src/*.cpp)))
 
 build : build/$(PROJECT)
