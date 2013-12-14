@@ -17,15 +17,18 @@ using namespace std;
 
 extern Hamsi *hamsi;
 extern bool sidebarOut;
+extern int bottleWater; // 0..100
+extern bool bowlFood;
 
 // Graphics -----------------------------------------------------------------------
 
 Texture *background;
 Texture *hamsi1, *hamsi2, *hamsi3, *sleeping, *sleeping2, *walking, *walking2;
 Texture *drinking;
+Texture *omnomnom;
 Texture *wheel;
 Texture *bottle;
-Texture *bowl;
+Texture *bowl, *bowl2;
 Texture *foodPoint, *waterPoint, *foodPointE, *waterPointE;
 Texture *btnFood, *btnWater;
 
@@ -42,8 +45,11 @@ void loadTextures ()
 	walking = loadTexture ("res/walking.png");
 	walking2 = loadTexture ("res/walking2.png");
 	drinking = loadTexture ("res/drinking.png");
+	omnomnom = loadTexture ("res/omnomnom.png");
 	wheel = loadTexture ("res/wheel.png");
 	bottle = loadTexture ("res/bottle.png");
+	bowl = loadTexture ("res/bowl.png");
+	bowl2 = loadTexture ("res/bowl2.png");
 	foodPoint = loadTexture ("res/foodpoint.png"); 
 	foodPointE = loadTexture ("res/foodpointE.png"); 
 	waterPoint = loadTexture ("res/waterpoint.png"); 
@@ -72,6 +78,7 @@ void drawHamsi ()
 		break;
 	case walkingState:
 	case goDrinkingState:
+	case goEatingState:
 		hflip = hamsi->vx > 0;
 		switch (hamsi->anima) {
 		case 0:
@@ -83,7 +90,10 @@ void drawHamsi ()
 		}
 		break;
 	case drinkingState:
-		draw (drinking, hamsi->x, hamsi->y, 32, 32, hflip);
+		draw (drinking, hamsi->x, hamsi->y, 32, 32);
+		break;
+	case eatingState:
+		draw (omnomnom, hamsi->x, hamsi->y, 32, 32);
 		break;
 	};
 }
@@ -92,10 +102,19 @@ void drawGameScene ()
 {
 	Texture *tex;
 
+	// background
 	draw (background, 0, 0);
 	
+	// bowl
+	if (bowlFood)
+		draw (bowl2, 720, 350, 63, 57);
+	else
+		draw (bowl, 720, 350, 63, 57);
+	
+	// hamsi
 	drawHamsi ();
 
+	// bottle
 	draw (bottle, 750, 500, 32, 125);
 	
 	// status bars

@@ -10,9 +10,12 @@
 #define wheelingState 4
 #define goDrinkingState 5
 #define drinkingState 6
+#define goEatingState 7
 
 #define drinkPointX 715
 #define drinkPointY 496
+#define eatPointX 721
+#define eatPointY 324
 
 
 // Classes .....................................................................

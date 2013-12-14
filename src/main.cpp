@@ -64,6 +64,20 @@ void hamsiEnterIdling ()
 	hamsi->anictr = 0;
 }
 
+void hamsiEnterSleeping ()
+{
+	cout << "enter sleeping" << endl;
+}
+
+void hamsiEnterEating ()
+{
+	cout << "enter eating" << endl;
+	hamsi->state = eatingState;
+	hamsi->lastchange = 0;
+	hamsi->anima = 0;
+	hamsi->anictr = 0;
+}
+
 void hamsiEnterWalking ()
 {
 	cout << "enter walking" << endl;
@@ -73,6 +87,11 @@ void hamsiEnterWalking ()
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+}
+
+void hamsiEnterWheeling ()
+{
+	cout << "enter wheeling" << endl;
 }
 
 void hamsiGoDrinking ()
@@ -93,6 +112,20 @@ void hamsiEnterDrinking ()
 {
 	cout << "enter drinking" << endl;
 	hamsi->state = drinkingState;
+	hamsi->lastchange = 0;
+	hamsi->anima = 0;
+	hamsi->anictr = 0;
+}
+
+void hamsiGoEating ()
+{
+	cout << "go eating" << endl;
+	int dx = eatPointX - hamsi->x;
+	int dy = eatPointY - hamsi->y;
+	int d = sqrt ( dx*dx + dy*dy );
+	hamsi->vx = (float)dx * 5 / (float) d;
+	hamsi->vy = (float)dy * 5/ (float) d;
+	hamsi->state = goEatingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
@@ -130,7 +163,7 @@ void handleGameMoment ()
 	
 		// actions
 		if (hamsi->lastchange > FPS*1) {
-			hamsiEnterIdling ();
+			hamsiGoEating ();
 		}
 	
 		hamsi->food -= 0.005 ;
@@ -147,10 +180,18 @@ void handleGameMoment ()
 		break;
 		
 	case goDrinkingState:
+	case goEatingState:
 	
 		// actions
-		if (inReachOf (hamsi->x, hamsi->y, drinkPointX, drinkPointY)) {
-			hamsiEnterDrinking ();
+		if (hamsi->state == goDrinkingState) {
+			if (inReachOf (hamsi->x, hamsi->y, drinkPointX, drinkPointY)) {
+				hamsiEnterDrinking ();
+			}
+		}
+		else if (hamsi->state == goEatingState) {
+			if (inReachOf (hamsi->x, hamsi->y, eatPointX, eatPointY)) {
+				hamsiEnterEating ();
+			}
 		}
 		
 		hamsi->food -= 0.005 ;
@@ -165,6 +206,25 @@ void handleGameMoment ()
 			hamsi->anima = hamsi->anima == 1 ? 0 : 1;
 		}
 		break;
+	
+	case drinkingState:
+	
+		// actions
+		if (hamsi->lastchange > FPS*2) {
+			hamsiGoEating ();
+		}
+		
+		break;
+
+	case eatingState:
+	
+		// actions
+		if (hamsi->lastchange > FPS*2) {
+			hamsiEnterIdling ();
+		}
+		
+		break;
+
 	}
 	
 	hamsi->anictr ++;
