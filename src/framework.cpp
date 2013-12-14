@@ -6,6 +6,8 @@
 */
 
 #include <iostream>
+#include <stdlib.h>
+#include <time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -42,6 +44,8 @@ void init ()
 	
 	
 	Mix_OpenAudio (44100, AUDIO_S16SYS, 2, 1024);
+	
+	srand (time (0));
 }
 
 void cleanup ()
@@ -66,11 +70,11 @@ Texture *loadTexture (char *filename)
 	return result;
 }
 
-void draw (Texture *tex, int x, int y)
+void draw (Texture *tex, int x, int y, int cx, int cy, bool hflip)
 {
 	SDL_Rect srcrect = {0, 0, tex->w, tex->h};
-	SDL_Rect dstrect = {x, y, tex->w, tex->h};
-	//SDL_SetTextureAlphaMod (tex->tex, 255);
-	SDL_RenderCopyEx (renderer, tex->tex, &srcrect, &dstrect, 0, 0, SDL_FLIP_NONE);
+	SDL_Rect dstrect = {x-cx, y-cy, tex->w, tex->h};
+	SDL_RenderCopyEx (renderer, tex->tex, &srcrect, &dstrect, 0, 0,
+		hflip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 }
 

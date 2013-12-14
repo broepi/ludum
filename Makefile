@@ -3,7 +3,7 @@
 
 PROJECT = mygame
 CC = g++
-COMPFLAGS = -I/usr/include/SDL2
+COMPFLAGS = -I/usr/include/SDL2 -Wno-write-strings
 LIBS = -lSDL2_image -lSDL2_mixer -lSDL2
 LINKFLAGS =
 OBJECTS = $(subst src,build,$(subst .cpp,.o,$(wildcard src/*.cpp)))
