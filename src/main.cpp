@@ -1,30 +1,55 @@
 
-#include <SDL.h>
-#include <SDL_mixer.h>
+/*
 
-SDL_Window *window;
-SDL_Renderer *renderer;
+	HamsiBro
+
+*/
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
+
+#include "framework.h"
+
+// General data
+
 bool running;
 SDL_Event event;
+
+// Graphics
+
+Texture *background;
+Texture *hamsi1, *hamsi2, *hamsi3, *sleeping, *sleeping2, *walking, *walking2;
+Texture *wheel;
+
+// Sounds
+
 Mix_Chunk *chord;
 
-int main (int argc, char *argv[])
+// --- Functions ---
+
+void loadResources ()
 {
-	SDL_Init (SDL_INIT_VIDEO|SDL_INIT_AUDIO);
+	background = loadTexture ("res/background.png");
+	hamsi1 = loadTexture ("res/hamsi1.png");
+	hamsi2 = loadTexture ("res/hamsi2.png");
+	hamsi3 = loadTexture ("res/hamsi3.png");
+	sleeping = loadTexture ("res/sleeping.png");
+	sleeping2 = loadTexture ("res/sleeping2.png");
+	walking = loadTexture ("res/walking.png");
+	walking2 = loadTexture ("res/walking2.png");
+	wheel = loadTexture ("res/wheel.png");
 
-	window = SDL_CreateWindow ("broepis game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		800, 600, 0);
-
-	renderer = SDL_CreateRenderer (window, -1, SDL_RENDERER_ACCELERATED);
-	
-	Mix_Init (MIX_INIT_OGG);
-	
-	Mix_OpenAudio (44100, AUDIO_S16SYS, 2, 1024);
-	
 	chord = Mix_LoadWAV ("res/f7chord.ogg");
-	
-	SDL_SetRenderDrawColor (renderer, 0, 0, 0xff, 0xff);
-	
+}
+
+void drawGameScene ()
+{
+	draw (background, 0, 0);
+}
+
+void gameScene ()
+{
 	running = true;
 	
 	while (running) {
@@ -37,22 +62,22 @@ int main (int argc, char *argv[])
 				Mix_PlayChannel (-1, chord, 0);
 				break;
 			}
+			SDL_SetRenderDrawColor (renderer, 0, 0, 0xff, 0xff);
 			SDL_RenderClear (renderer);
+			
+			drawGameScene ();
+			
 			SDL_RenderPresent (renderer);
 		}
 	}
-	
-	Mix_FreeChunk (chord);
-	
-	Mix_CloseAudio ();
-	
-	Mix_Quit ();
-	
-	SDL_DestroyRenderer (renderer);
-	
-	SDL_DestroyWindow (window);
-	
-	SDL_Quit ();
+}
+
+int main (int argc, char *argv[])
+{
+	init ();
+	loadResources ();
+	gameScene ();
+	cleanup ();
 	
 	return 0;
 }
