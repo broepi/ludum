@@ -10,22 +10,30 @@
 #include <time.h>
 #include <math.h>
 #include <list>
+#include <string>
+#include <sstream>
+#include <stdio.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
+
+using namespace std;
+
+#include "SDL_ttf.h"
 
 #include "common.h"
 #include "framework.h"
 #include "drawing.h"
 
-using namespace std;
-
 // General data -----------------------------------------------------------------------
+
+TTF_Font *font;
 
 const SDL_Rect rcBtnWater = {736,0,64,64};
 const SDL_Rect rcBtnFood = {736,64,64,64};
 
 bool running;
+bool brokeUp;
 SDL_Event event;
 int lasttick, curtick;
 
@@ -38,6 +46,14 @@ Mix_Chunk *sndFillBowl, *sndFillBottle, *sndCrunch, *sndDrink, *sndSnip, *sndPlo
 
 Hamsi *hamsi;
 list<PooBean*> pooBeans;
+TextLabel *lblNamePrompt;
+TextLabel *lblNameInput;
+TextLabel *lblName1, *lblName2, *lblAge1, *lblAge2;
+
+// Colors *****************************************************************************
+
+SDL_Color white = {0xff, 0xff, 0xff, 0xff};
+SDL_Color black = {0, 0, 0, 0xff};
 
 // Game state variables
 
@@ -46,6 +62,27 @@ float bottleWater; // 0..10
 bool bowlFood;
 
 // --- Functions --- -----------------------------------------------------------------------
+
+void saveToDisk ()
+{
+	FILE *fs = fopen ("savegame", "wb");
+	
+	fwrite (hamsi, sizeof(Hamsi), 1, fs);
+	
+	const char *name = hamsi->name.c_str ();
+	int namelen = strlen (name);
+	fwrite (&namelen, sizeof(int), 1, fs);
+	fwrite (name, sizeof(char), namelen, fs);
+	
+	int beancnt = pooBeans.size ();
+	fwrite (&beancnt, sizeof(int), 1, fs);
+	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++) {
+		PooBean *bean = *it;
+		fwrite (bean, sizeof (PooBean), 1, fs);
+	}
+	
+	fclose (fs);
+}
 
 void loadResources ()
 {
@@ -58,6 +95,12 @@ void loadResources ()
 	sndDrink = Mix_LoadWAV ("res/drinking.ogg");
 	sndSnip = Mix_LoadWAV ("res/snip.ogg");
 	sndPlop = Mix_LoadWAV ("res/plop.ogg");
+	
+	font = TTF_OpenFont ("res/Ubuntu-R.ttf", 20);
+	if (font == 0) {
+		cerr << "TTF error: " << TTF_GetError () << endl;
+		exit (-1);
+	}
 }
 
 inline bool inReachOf (int x, int y, int ox, int oy)
@@ -73,6 +116,14 @@ inline bool pointInBox (int x, int y, const SDL_Rect *rect)
 inline int randInt (int first, int last)
 {
 	return rand () % (last + 1 - first) + first;
+}
+
+string humanReadableAge ()
+{
+	double seconds = hamsi->age / FPS;
+	stringstream ss;
+	ss << (long)seconds << " seconds";
+	return ss.str();
 }
 
 void loadWater ()
@@ -120,6 +171,19 @@ void exhaustBottle ()
 void refreshBottle ()
 {
 	bottleWater = 10;
+}
+
+void createHamsi ()
+{
+	hamsi = new Hamsi;
+	hamsi->name = "";
+	hamsi->age = 0;
+	hamsi->x = 400;
+	hamsi->y = 400;
+	hamsi->food = 10;
+	hamsi->water = 10;
+	hamsi->power = 10;
+	hamsi->health = 10;
 }
 
 void moveHamsi ()
@@ -298,6 +362,11 @@ bool checkForNeeds ()
 
 void handleGameMoment ()
 {
+	lblAge2->text = humanReadableAge ();
+	lblAge2->update ();
+	lblAge2->cx = lblAge2->w;
+	lblAge2->cy = 0;
+
 	switch (hamsi->state) {
 	
 	case idlingState:
@@ -463,8 +532,79 @@ void handleGameMoment ()
 
 	}
 	
+	hamsi->age ++;
 	hamsi->anictr ++;
 	hamsi->lastchange ++;
+}
+
+
+void birthStage ()
+{
+	// Preparation
+	
+	lblNamePrompt = new TextLabel (
+		font, "How do you want to call your Hamsi Bro?", 400, 200, white);
+	lblNameInput = new TextLabel (
+		font, "", 400, 300, white);
+	
+	createHamsi ();
+
+	SDL_StartTextInput ();
+	
+	// Lé GAMELOOP
+	running = true;
+	brokeUp = false;
+	
+	lasttick = SDL_GetTicks ();
+	while (running) {
+	
+		// EVENTS
+		
+		while (SDL_PollEvent (&event) == 1) {
+			switch (event.type) {
+			case SDL_QUIT:
+				running = false;
+				brokeUp = true;
+				break;
+			case SDL_TEXTINPUT:
+				lblNameInput->text += event.text.text;
+				lblNameInput->update ();
+				break;
+			case SDL_KEYDOWN:
+				if (event.key.keysym.sym == SDLK_BACKSPACE) {
+					if (lblNameInput->text.size () > 0) {
+						lblNameInput->text.erase (lblNameInput->text.size () -1);
+						lblNameInput->update ();
+					}
+				}
+				else if (event.key.keysym.sym == SDLK_RETURN &&
+					lblNameInput->text != "" &&
+					lblNameInput->text != " ")
+				{
+					cout << "Hamsi name: " << lblNameInput->text << endl;
+					hamsi->name = lblNameInput->text;
+					running = false;
+				}
+				break;
+			}
+		}
+		
+		// DRAWING
+		
+		curtick = SDL_GetTicks ();
+		if (curtick-lasttick >= FRAMEDUR) {
+			lasttick = curtick;
+			
+			SDL_SetRenderDrawColor (renderer, 0, 0, 0xff, 0xff);
+			SDL_RenderClear (renderer);
+			
+			drawBirthScene ();
+			
+			SDL_RenderPresent (renderer);
+		}
+	}
+	
+	SDL_StopTextInput ();
 }
 
 
@@ -472,19 +612,25 @@ void gameStage ()
 {
 
 	// Preparation
+	
+	lblName1 = new TextLabel (font, "Name:", 800-16, 200, white);
+	lblName1->cx = lblName1->w;
+	lblName1->cy = 0;
+	lblName2 = new TextLabel (font, hamsi->name, 800-16, 220, white);
+	lblName2->cx = lblName2->w;
+	lblName2->cy = 0;
+	lblAge1 = new TextLabel (font, "Age:", 800-16, 240, white);
+	lblAge1->cx = lblAge1->w;
+	lblAge1->cy = 0;
+	lblAge2 = new TextLabel (font, "0", 800-16, 260, white);
+	lblAge2->cx = lblAge2->w;
+	lblAge2->cy = 0;
+	
 	pooBeans.clear ();
 	
 	sidebarOut = false;
 	bottleWater = 10;
 	bowlFood = true;
-	
-	hamsi = new Hamsi;
-	hamsi->x = 400;
-	hamsi->y = 400;
-	hamsi->food = 10;
-	hamsi->water = 10;
-	hamsi->power = 10;
-	hamsi->health = 10;
 	
 	hamsiEnterIdling ();
 	
@@ -558,8 +704,12 @@ int main (int argc, char *argv[])
 	cout << "Your one and only hamster brother. - Don't kill him, you won't get another one"<<endl;
 	init ();
 	loadResources ();
-	gameStage ();
+	birthStage ();
+	if (!brokeUp)
+		gameStage ();
 	cleanup ();
+	
+	saveToDisk ();
 	
 	return 0;
 }

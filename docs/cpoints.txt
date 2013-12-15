@@ -1,0 +1,7 @@
+cx/cy
+
+Hamsi 32, 44
+Tree 200, 470
+Wheel 54, 112
+Bowl 63, 57
+Bottle 32, 125

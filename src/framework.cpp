@@ -8,13 +8,16 @@
 #include <iostream>
 #include <stdlib.h>
 #include <time.h>
+#include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 
-#include "framework.h"
-
 using namespace std;
+
+#include "SDL_ttf.h"
+
+#include "framework.h"
 
 // General data
 
@@ -32,6 +35,11 @@ void init ()
 	
 	if (IMG_Init (IMG_INIT_PNG) == 0) {
 		cerr << "IMG error: " << IMG_GetError () << endl;
+		exit (-1);
+	}
+	
+	if (TTF_Init () != 0) {
+		cerr << "TTF error: " << TTF_GetError () << endl;
 		exit (-1);
 	}
 	
@@ -53,6 +61,8 @@ void cleanup ()
 	Mix_CloseAudio ();
 	
 	Mix_Quit ();
+	
+	TTF_Quit ();
 	
 	SDL_DestroyRenderer (renderer);
 	
@@ -82,4 +92,56 @@ void playSnd (Mix_Chunk *snd)
 {
 	Mix_PlayChannel (-1, snd, 0);
 }
+
+
+TextLabel::TextLabel (TTF_Font *_font, string _text, int _x, int _y, SDL_Color _color)
+{
+	font = _font; text = _text; x = _x; y = _y; color = _color;
+	
+	if (text == "")
+		text = " ";
+	
+	SDL_Surface *surf = TTF_RenderText_Solid (font, text.c_str (), color);
+	SDL_Texture *sdltex = SDL_CreateTextureFromSurface (renderer, surf);
+	tex = new Texture;
+	tex->tex = sdltex;
+	w = tex->w = surf->w;
+	h = tex->h = surf->h;
+	cx = w/2;
+	cy = h/2;
+	SDL_FreeSurface (surf);
+}
+
+TextLabel::~TextLabel ()
+{
+	SDL_DestroyTexture (tex->tex);
+	delete tex;
+}
+
+void TextLabel::draw ()
+{
+	::draw (tex, x, y, cx, cy);
+}
+
+void TextLabel::update ()
+{
+	SDL_DestroyTexture (tex->tex);
+	delete tex;
+	
+	if (text == "")
+		text = " ";
+	
+	SDL_Surface *surf = TTF_RenderText_Solid (font, text.c_str (), color);
+	SDL_Texture *sdltex = SDL_CreateTextureFromSurface (renderer, surf);
+	tex = new Texture;
+	tex->tex = sdltex;
+	w = tex->w = surf->w;
+	h = tex->h = surf->h;
+	cx = w/2;
+	cy = h/2;
+	SDL_FreeSurface (surf);
+}
+
+
+
 

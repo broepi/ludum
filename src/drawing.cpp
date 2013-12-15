@@ -5,15 +5,18 @@
 #include <math.h>
 #include <list>
 #include <set>
+#include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 
+using namespace std;
+
+#include "SDL_ttf.h"
+
 #include "common.h"
 #include "framework.h"
 #include "drawing.h"
-
-using namespace std;
 
 // HAMSI
 
@@ -22,6 +25,10 @@ extern bool sidebarOut;
 extern float bottleWater;
 extern bool bowlFood;
 extern list<PooBean*> pooBeans;
+extern TTF_Font *font;
+extern TextLabel *lblNamePrompt;
+extern TextLabel *lblNameInput;
+extern TextLabel *lblName1, *lblName2, *lblAge1, *lblAge2;
 
 // Graphics -----------------------------------------------------------------------
 
@@ -189,6 +196,19 @@ void drawBean (PooBean *b)
 		draw (poobean2, b->x, b->y, 16,16);
 }
 
+void drawBirthScene ()
+{
+	// background
+	draw (background, 0, 0);
+	
+	// tree
+	drawTree (0);
+	
+	// labels
+	lblNamePrompt->draw ();
+	lblNameInput->draw ();
+}
+
 void drawGameScene ()
 {
 	// background
@@ -199,7 +219,10 @@ void drawGameScene ()
 	layers.clear ();
 	layers.insert (new DrawingLayer (layerTree, 0, 200, 470, 200, 470, drawTree));
 	layers.insert (new DrawingLayer (layerHamsi, 0, hamsi->x, hamsi->y, 32, 43, drawHamsi));
-	layers.insert (new DrawingLayer (layerWheel, 0, 540, 290, 54, 112, drawWheel));
+	if (hamsi->state != wheelingState && hamsi->state != goWheelingState)
+		layers.insert (new DrawingLayer (layerWheel, 0, 540, 290, 54, 112, drawWheel));
+	else
+		layers.insert (new DrawingLayer (layerWheel, 0, 540, 270, 54, 132, drawWheel));
 	layers.insert (new DrawingLayer (layerBowl, 0, 540, 290, 54, 112, drawBowl));
 	layers.insert (new DrawingLayer (layerBottle, 0, 540, 290, 54, 112, drawBottle));
 	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++)
@@ -240,6 +263,9 @@ void drawGameScene ()
 	if (sidebarOut) {
 		draw (btnWater, 800,0, 64,0);
 		draw (btnFood, 800,64, 64,0);
+		lblName1->draw ();
+		lblName2->draw ();
+		lblAge1->draw ();
+		lblAge2->draw ();
 	}
-	
 }

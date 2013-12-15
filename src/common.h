@@ -31,6 +31,10 @@
 // Classes .....................................................................
 
 struct Hamsi {
+
+	string name;
+	unsigned int age;  // hamsi's uptime counted in frames (yes, in FRAMES!!!)
+	
 	float x, y;
 	int state;
 	int lastchange; // counts frames from last state change
@@ -54,3 +58,4 @@ struct PooBean {
 	int x, y;
 	int style; // 0..1
 };
+

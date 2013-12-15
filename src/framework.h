@@ -4,6 +4,22 @@ struct Texture {
 	int w, h;
 };
 
+struct TextLabel {
+
+	TextLabel (TTF_Font *font, string text, int x, int y, SDL_Color color);
+	~TextLabel ();
+	void draw ();
+	void update ();
+	
+	TTF_Font *font;
+	int x, y;
+	int cx, cy;
+	int w, h;
+	string text;
+	SDL_Color color;
+	Texture *tex;
+};
+
 
 void init ();
 void cleanup ();

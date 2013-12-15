@@ -3,9 +3,9 @@
 
 PROJECT = hamsibro
 CC = g++
-COMPFLAGS = -I/usr/include/SDL2 -Wno-write-strings
-LIBS = -lSDL2_image -lSDL2_mixer -lSDL2
-LINKFLAGS =
+COMPFLAGS = -Iinclude -I/usr/include/SDL2 -Wno-write-strings -fpermissive
+LIBS = -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2
+LINKFLAGS = -Llibs/amd64
 OBJECTS = $(subst src,build,$(subst .cpp,.o,$(wildcard src/*.cpp)))
 
 build : build/$(PROJECT)

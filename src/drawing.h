@@ -9,7 +9,7 @@
 
 void loadTextures ();
 
-void drawHamsi ();
+void drawBirthScene ();
 void drawGameScene ();
 
 typedef void (*DrawFunc) (PooBean*);
