@@ -25,6 +25,9 @@ using namespace std;
 #include "framework.h"
 #include "drawing.h"
 
+
+void hamsiEnterIdling ();
+
 // General data -----------------------------------------------------------------------
 
 TTF_Font *font;
@@ -33,7 +36,7 @@ const SDL_Rect rcBtnWater = {736,0,64,64};
 const SDL_Rect rcBtnFood = {736,64,64,64};
 
 bool running;
-bool brokeUp;
+bool brokeUp = false;
 SDL_Event event;
 int lasttick, curtick;
 
@@ -57,17 +60,36 @@ SDL_Color black = {0, 0, 0, 0xff};
 
 // Game state variables
 
+bool newGame = true;
+
 bool sidebarOut;
 float bottleWater; // 0..10
 bool bowlFood;
 
 // --- Functions --- -----------------------------------------------------------------------
 
+void createHamsi ()
+{
+	hamsi = new Hamsi;
+	hamsi->name = "";
+	hamsi->age = 0;
+	hamsi->x = 400;
+	hamsi->y = 400;
+	hamsi->food = 10;
+	hamsi->water = 10;
+	hamsi->power = 10;
+	hamsi->health = 10;
+	
+	hamsiEnterIdling ();
+}
+
 void saveToDisk ()
 {
 	FILE *fs = fopen ("savegame", "wb");
 	
-	fwrite (hamsi, sizeof(Hamsi), 1, fs);
+	fwrite (&newGame, sizeof (bool), 1, fs);
+	
+	fwrite (&hamsi->age, sizeof(Hamsi)-sizeof(string), 1, fs);
 	
 	const char *name = hamsi->name.c_str ();
 	int namelen = strlen (name);
@@ -79,6 +101,45 @@ void saveToDisk ()
 	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++) {
 		PooBean *bean = *it;
 		fwrite (bean, sizeof (PooBean), 1, fs);
+	}
+	
+	fclose (fs);
+}
+
+void loadFromDisk ()
+{
+	FILE *fs = fopen ("savegame", "rb");
+	
+	if (fs==0) {
+		createHamsi ();
+		pooBeans.clear ();
+		saveToDisk ();
+		return;
+	}
+	
+	fread (&newGame, sizeof(bool), 1, fs);
+	if (newGame) {
+		cout << "NEWGAME" << endl;
+		createHamsi ();
+		pooBeans.clear ();
+	}
+	else {
+		hamsi = new Hamsi;
+		fread (&hamsi->age, sizeof(Hamsi)-sizeof(string), 1, fs);
+		int namelen;
+		fread (&namelen, sizeof(int), 1, fs);
+		char *name = new char [namelen+1];
+		name [namelen] = 0;
+		fread (name, sizeof(char), namelen, fs);
+		hamsi->name = name;
+		int beancnt;
+		fread (&beancnt, sizeof(int), 1, fs);
+		pooBeans.clear ();
+		for (int i=0; i<beancnt; i++) {
+			PooBean *newBean = new PooBean;
+			fread (newBean, sizeof(PooBean), 1, fs);
+			pooBeans.push_back (newBean);
+		}
 	}
 	
 	fclose (fs);
@@ -168,22 +229,49 @@ void exhaustBottle ()
 	bottleWater = max (bottleWater, 0.0f);
 }
 
+void updateHamsiVars ()
+{
+	switch (hamsi->state) {
+	
+	case idlingState:
+	case walkingState:
+	case goDrinkingState:
+	case goEatingState:
+	case goWheelingState:
+	case wheelingState:
+	
+		exhaustWater ();
+		exhaustFood ();
+		exhaustPower ();
+		break;
+	
+	case drinkingState:
+	
+		loadWater ();
+		exhaustFood ();
+		exhaustPower ();
+		break;
+
+	case eatingState:
+	
+		exhaustWater ();
+		loadFood ();
+		exhaustPower ();
+		break;
+
+	case sleepingState:
+		
+		exhaustWater ();
+		exhaustFood ();
+		loadPower ();
+		break;
+	
+	}
+}
+
 void refreshBottle ()
 {
 	bottleWater = 10;
-}
-
-void createHamsi ()
-{
-	hamsi = new Hamsi;
-	hamsi->name = "";
-	hamsi->age = 0;
-	hamsi->x = 400;
-	hamsi->y = 400;
-	hamsi->food = 10;
-	hamsi->water = 10;
-	hamsi->power = 10;
-	hamsi->health = 10;
 }
 
 void moveHamsi ()
@@ -321,6 +409,15 @@ void hamsiGoWheeling ()
 	cout << "go wheeling" << endl;
 }
 
+void hamsiDie ()
+{
+	hamsi->state = deadState;
+	hamsi->lastchange = 0;
+	hamsi->anima = 0;
+	hamsi->anictr = 0;
+	cout << "hamster died" << endl;
+}
+
 // ----- condensed state change
 
 bool checkForNeeds ()
@@ -366,6 +463,10 @@ void handleGameMoment ()
 	lblAge2->update ();
 	lblAge2->cx = lblAge2->w;
 	lblAge2->cy = 0;
+	
+	if (hamsi->state != deadState && hamsi->health <= 0) {
+		hamsiDie ();
+	}
 
 	switch (hamsi->state) {
 	
@@ -384,9 +485,7 @@ void handleGameMoment ()
 			break;
 		}
 	
-		exhaustWater ();
-		exhaustFood ();
-		exhaustPower ();
+		updateHamsiVars ();
 	
 		// Animation
 		if (hamsi->anima == 0 && randInt (1,50) == 1) {
@@ -415,9 +514,8 @@ void handleGameMoment ()
 			poop ();
 		
 	
-		exhaustWater ();
-		exhaustFood ();
-		exhaustPower ();
+		updateHamsiVars ();
+
 
 		
 		moveHamsi ();
@@ -444,10 +542,9 @@ void handleGameMoment ()
 			}
 			break;
 		}
-	
-		exhaustWater ();
-		exhaustFood ();
-		exhaustPower ();
+
+		updateHamsiVars ();
+
 		
 		
 		moveHamsi ();
@@ -467,9 +564,7 @@ void handleGameMoment ()
 			break;
 		}
 		
-		loadWater ();
-		exhaustFood ();
-		exhaustPower ();
+		updateHamsiVars ();
 		exhaustBottle ();
 				
 		break;
@@ -482,10 +577,9 @@ void handleGameMoment ()
 			hamsiEnterWalking ();
 			break;
 		}
-		
-		exhaustWater ();
-		loadFood ();
-		exhaustPower ();
+
+		updateHamsiVars ();
+
 		
 		break;
 
@@ -499,9 +593,7 @@ void handleGameMoment ()
 		else if ( checkForNeeds () )
 			break;
 		
-		exhaustWater ();
-		exhaustFood ();
-		exhaustPower ();
+		updateHamsiVars ();
 	
 		// Animation
 		if (hamsi->anictr > 1) {
@@ -518,9 +610,7 @@ void handleGameMoment ()
 			hamsiEnterWalking ();
 		}
 		
-		exhaustWater ();
-		exhaustFood ();
-		loadPower ();
+		updateHamsiVars ();
 	
 		// Animation
 		if (hamsi->anictr > 4) {
@@ -546,8 +636,6 @@ void birthStage ()
 		font, "How do you want to call your Hamsi Bro?", 400, 200, white);
 	lblNameInput = new TextLabel (
 		font, "", 400, 300, white);
-	
-	createHamsi ();
 
 	SDL_StartTextInput ();
 	
@@ -625,14 +713,11 @@ void gameStage ()
 	lblAge2 = new TextLabel (font, "0", 800-16, 260, white);
 	lblAge2->cx = lblAge2->w;
 	lblAge2->cy = 0;
-	
-	pooBeans.clear ();
-	
+		
 	sidebarOut = false;
 	bottleWater = 10;
 	bowlFood = true;
 	
-	hamsiEnterIdling ();
 	
 	
 	
@@ -704,7 +789,11 @@ int main (int argc, char *argv[])
 	cout << "Your one and only hamster brother. - Don't kill him, you won't get another one"<<endl;
 	init ();
 	loadResources ();
-	birthStage ();
+	loadFromDisk ();
+	if (newGame) {
+		birthStage ();
+		newGame = false;
+	}
 	if (!brokeUp)
 		gameStage ();
 	cleanup ();

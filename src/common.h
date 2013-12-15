@@ -12,6 +12,7 @@
 #define drinkingState 6
 #define goEatingState 7
 #define goWheelingState 8
+#define deadState 9
 
 #define drinkPointX 715
 #define drinkPointY 496

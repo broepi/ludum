@@ -37,6 +37,7 @@ Texture *tree;
 Texture *hamsi1, *hamsi2, *hamsi3, *sleeping1, *sleeping2, *walking, *walking2;
 Texture *drinking;
 Texture *omnomnom;
+Texture *dead;
 Texture *wheel;
 Texture *bottleE, *bottleF;
 Texture *bowl, *bowl2;
@@ -60,6 +61,7 @@ void loadTextures ()
 	walking2 = loadTexture ("res/walking2.png");
 	drinking = loadTexture ("res/drinking.png");
 	omnomnom = loadTexture ("res/omnomnom.png");
+	dead = loadTexture ("res/dead.png");
 	wheel = loadTexture ("res/wheel.png");
 	bottleE = loadTexture ("res/bottle.png");
 	bottleF = loadTexture ("res/bottleF.png");
@@ -136,6 +138,9 @@ void drawHamsi (PooBean *b)
 			draw (sleeping2, hamsi->x, hamsi->y, 32, 32);
 			break;
 		}
+		break;
+	case deadState:
+		draw (dead, hamsi->x, hamsi->y, 32, 32);
 		break;
 	};
 }
