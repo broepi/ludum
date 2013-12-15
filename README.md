@@ -12,4 +12,4 @@ Author: broepi
 Screenshots
 -----------
 
-![Your one and only Hamsi Bro](/broepi/ludum/tree/master/scrshots/screesnhot3.png)
+![Your one and only Hamsi Bro](/scrshots/screesnhot3.png)
