@@ -20,11 +20,6 @@
 #define wheelPointX 540
 #define wheelPointY 275
 
-#define hungerDec 0.033
-#define thirstDec 0.033
-#define hungerInc 0.33
-#define thirstInc 0.33
-
 #define walkSpeed 5
 
 
@@ -49,3 +44,7 @@ struct Hamsi {
 	int anictr; // counting frames for animation
 };
 
+struct PooBean {
+	int x, y;
+	int style; // 0..1
+};

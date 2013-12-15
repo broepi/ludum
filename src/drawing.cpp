@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <list>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -19,17 +20,19 @@ extern Hamsi *hamsi;
 extern bool sidebarOut;
 extern float bottleWater;
 extern bool bowlFood;
+extern list<PooBean*> pooBeans;
 
 // Graphics -----------------------------------------------------------------------
 
 Texture *background;
 Texture *tree;
-Texture *hamsi1, *hamsi2, *hamsi3, *sleeping, *sleeping2, *walking, *walking2;
+Texture *hamsi1, *hamsi2, *hamsi3, *sleeping1, *sleeping2, *walking, *walking2;
 Texture *drinking;
 Texture *omnomnom;
 Texture *wheel;
 Texture *bottleE, *bottleF;
 Texture *bowl, *bowl2;
+Texture *poobean1, *poobean2;
 Texture *foodPoint, *waterPoint, *powerPoint, *foodPointE, *waterPointE, *powerPointE;
 Texture *btnFood, *btnWater;
 
@@ -42,7 +45,7 @@ void loadTextures ()
 	hamsi1 = loadTexture ("res/hamsi1.png");
 	hamsi2 = loadTexture ("res/hamsi2.png");
 	hamsi3 = loadTexture ("res/hamsi3.png");
-	sleeping = loadTexture ("res/sleeping.png");
+	sleeping1 = loadTexture ("res/sleeping.png");
 	sleeping2 = loadTexture ("res/sleeping2.png");
 	walking = loadTexture ("res/walking.png");
 	walking2 = loadTexture ("res/walking2.png");
@@ -53,6 +56,8 @@ void loadTextures ()
 	bottleF = loadTexture ("res/bottleF.png");
 	bowl = loadTexture ("res/bowl.png");
 	bowl2 = loadTexture ("res/bowl2.png");
+	poobean1 = loadTexture ("res/poobean.png");
+	poobean2 = loadTexture ("res/poobean2.png");
 	foodPoint = loadTexture ("res/foodpoint.png"); 
 	foodPointE = loadTexture ("res/foodpointE.png"); 
 	waterPoint = loadTexture ("res/waterpoint.png"); 
@@ -102,13 +107,22 @@ void drawHamsi ()
 		draw (omnomnom, hamsi->x, hamsi->y, 32, 32);
 		break;
 	case wheelingState:
-		//hflip = hamsi->vx > 0;
 		switch (hamsi->anima) {
 		case 0:
 			draw (walking, hamsi->x, hamsi->y, 32, 32);
 			break;
 		case 1:
 			draw (walking2, hamsi->x, hamsi->y, 32, 32);
+			break;
+		}
+		break;
+	case sleepingState:
+		switch (hamsi->anima) {
+		case 0:
+			draw (sleeping1, hamsi->x, hamsi->y, 32, 32);
+			break;
+		case 1:
+			draw (sleeping2, hamsi->x, hamsi->y, 32, 32);
 			break;
 		}
 		break;
@@ -146,6 +160,16 @@ void drawGameScene ()
 	SDL_Rect dstrectF = {x-cx, y-cy + 11 + waterbarTotal * a, bottleE->w, waterbarTotal * b + 28};
 	SDL_RenderCopyEx (renderer, bottleE->tex, &srcrect, &dstrect, 0, 0, SDL_FLIP_NONE);
 	SDL_RenderCopyEx (renderer, bottleF->tex, &srcrectF, &dstrectF, 0, 0, SDL_FLIP_NONE);
+	
+	// poo beans
+	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++) {
+		if ( (*it)->style == 0) {
+			draw (poobean1, (*it)->x, (*it)->y, 16,16);
+		}
+		else {
+			draw (poobean2, (*it)->x, (*it)->y, 16,16);
+		}
+	}
 	
 	// hamsi
 	drawHamsi ();

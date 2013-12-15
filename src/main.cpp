@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <list>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -35,6 +36,7 @@ Mix_Chunk *chord;
 // Objects -----------------------------------------------------------------------
 
 Hamsi *hamsi;
+list<PooBean*> pooBeans;
 
 // Game state variables
 
@@ -74,7 +76,7 @@ void loadWater ()
 
 void exhaustWater ()
 {
-	hamsi->water -= 0.033;
+	hamsi->water -= 0.01;
 	hamsi->water = max (hamsi->water, 0.0f);
 }
 
@@ -86,7 +88,7 @@ void loadFood ()
 
 void exhaustFood ()
 {
-	hamsi->food -= 0.033;
+	hamsi->food -= 0.005;
 	hamsi->food = max (hamsi->food, 0.0f);
 }
 
@@ -98,7 +100,7 @@ void loadPower ()
 
 void exhaustPower ()
 {
-	hamsi->power -= 0.033;
+	hamsi->power -= 0.01;
 	hamsi->power = max (hamsi->power, 0.0f);
 }
 
@@ -123,6 +125,15 @@ void moveHamsi ()
 	*/
 }
 
+void poop ()
+{
+	PooBean *newBean = new PooBean;
+	newBean->x = hamsi->x;
+	newBean->y = hamsi->y;
+	newBean->style = randInt (0,1);
+	pooBeans.push_back (newBean);
+}
+
 // State changes --------------------------------------------------------
 
 void hamsiEnterIdling ()
@@ -137,16 +148,20 @@ void hamsiEnterIdling ()
 
 void hamsiEnterSleeping ()
 {
+	hamsi->state = sleepingState;
+	hamsi->lastchange = 0;
+	hamsi->anima = 0;
+	hamsi->anictr = 0;
 	cout << "enter sleeping" << endl;
 }
 
 void hamsiEnterEating ()
 {
-	cout << "enter eating" << endl;
 	hamsi->state = eatingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	cout << "enter eating" << endl;
 }
 
 void hamsiEnterWalking ()
@@ -168,11 +183,11 @@ void hamsiEnterWalking ()
 
 void hamsiEnterWheeling ()
 {
-	cout << "enter wheeling" << endl;
 	hamsi->state = wheelingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	cout << "enter wheeling" << endl;
 }
 
 void hamsiGoDrinking ()
@@ -194,11 +209,11 @@ void hamsiGoDrinking ()
 
 void hamsiEnterDrinking ()
 {
-	cout << "enter drinking" << endl;
 	hamsi->state = drinkingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	cout << "enter drinking" << endl;
 }
 
 void hamsiGoEating ()
@@ -235,6 +250,26 @@ void hamsiGoWheeling ()
 	cout << "go wheeling" << endl;
 }
 
+// ----- condensed state change
+
+bool checkForNeeds ()
+{
+	if (hamsi->water < 5 && bottleWater > 0) {
+		hamsiGoDrinking ();
+		return true;
+	}
+	else if (hamsi->food < 5 && bowlFood) {
+		hamsiGoEating ();
+		return true;
+	}
+	else if (hamsi->power < 5) {
+		hamsiEnterSleeping ();
+		return true;
+	}
+	else
+		return false;
+}
+
 //////////////////////////////////////////////----------------------------------------------
 
 void handleGameMoment ()
@@ -243,19 +278,13 @@ void handleGameMoment ()
 	
 	case idlingState:
 	
-		// actions
+		// actions / state transitions
 		if (hamsi->lastchange > hamsi->dwell) {
 			hamsiEnterWalking ();
+			break;
 		}
-		else if (hamsi->power < 5) {
-			hamsiGoWheeling ();
-		}
-		else if (hamsi->food < 5 && bowlFood) {
-			hamsiGoEating ();
-		}
-		else if (hamsi->water < 5 && bottleWater > 0) {
-			hamsiGoDrinking ();
-		}
+		else if ( checkForNeeds () )
+			break;
 	
 		exhaustWater ();
 		exhaustFood ();
@@ -274,13 +303,18 @@ void handleGameMoment ()
 		
 	case walkingState:
 	
-		// actions
+		// actions / state transitions
 		if (hamsi->lastchange >= hamsi->dwell) {
 			hamsi->x = hamsi->destx;
 			hamsi->y = hamsi->desty;
 			hamsiEnterIdling ();
-			//hamsiGoEating ();
+			break;
 		}
+		else if ( checkForNeeds () )
+			break;
+		
+		if ( randInt (1,100) == 1 )
+			poop ();
 		
 	
 		exhaustWater ();
@@ -301,27 +335,16 @@ void handleGameMoment ()
 	case goEatingState:
 	case goWheelingState:
 	
-		// actions
-		if (hamsi->state == goDrinkingState) {
-			if (hamsi->lastchange >= hamsi->dwell) {
-				hamsi->x = hamsi->destx;
-				hamsi->y = hamsi->desty;
-				hamsiEnterDrinking ();
+		// actions / state transitions
+		if (hamsi->lastchange >= hamsi->dwell) {
+			hamsi->x = hamsi->destx;
+			hamsi->y = hamsi->desty;
+			switch (hamsi->state) {
+				case goDrinkingState: hamsiEnterDrinking (); break;
+				case goEatingState: hamsiEnterEating (); break;
+				case goWheelingState: hamsiEnterWheeling (); break;
 			}
-		}
-		else if (hamsi->state == goEatingState) {
-			if (hamsi->lastchange >= hamsi->dwell) {
-				hamsi->x = hamsi->destx;
-				hamsi->y = hamsi->desty;
-				hamsiEnterEating ();
-			}
-		}
-		else if (hamsi->state == goWheelingState) {
-			if (hamsi->lastchange >= hamsi->dwell) {
-				hamsi->x = hamsi->destx;
-				hamsi->y = hamsi->desty;
-				hamsiEnterWheeling ();
-			}
+			break;
 		}
 	
 		exhaustWater ();
@@ -340,26 +363,26 @@ void handleGameMoment ()
 	
 	case drinkingState:
 	
-		// actions
-		if (hamsi->lastchange > FPS*2) {
+		// actions / state transitions
+		if (hamsi->water >= 10 || bottleWater <= 0) {
 			hamsiEnterWalking ();
+			break;
 		}
 		
 		loadWater ();
 		exhaustFood ();
 		exhaustPower ();
 		exhaustBottle ();
-		
-		cout << "water fuelness: " << bottleWater << endl;
-		
+				
 		break;
 
 	case eatingState:
 	
-		// actions
-		if (hamsi->lastchange > FPS*2) {
+		// actions / state transitions
+		if (hamsi->food >= 10) {
 			bowlFood = false;
 			hamsiEnterWalking ();
+			break;
 		}
 		
 		exhaustWater ();
@@ -370,9 +393,8 @@ void handleGameMoment ()
 
 	case wheelingState:
 	
-		// actions
+		// actions / state transitions
 		if (hamsi->lastchange > FPS*2) {
-			bowlFood = false;
 			hamsiEnterWalking ();
 		}
 		
@@ -382,6 +404,25 @@ void handleGameMoment ()
 	
 		// Animation
 		if (hamsi->anictr > 1) {
+			hamsi->anictr = 0;
+			hamsi->anima = hamsi->anima == 1 ? 0 : 1;
+		}
+		
+		break;
+
+	case sleepingState:
+	
+		// actions / state transitions
+		if (hamsi->power >= 10) {
+			hamsiEnterWalking ();
+		}
+		
+		exhaustWater ();
+		exhaustFood ();
+		loadPower ();
+	
+		// Animation
+		if (hamsi->anictr > 4) {
 			hamsi->anictr = 0;
 			hamsi->anima = hamsi->anima == 1 ? 0 : 1;
 		}
@@ -399,6 +440,8 @@ void gameStage ()
 {
 
 	// Preparation
+	pooBeans.clear ();
+	
 	sidebarOut = false;
 	bottleWater = 10;
 	bowlFood = true;
@@ -459,6 +502,9 @@ void gameStage ()
 
 int main (int argc, char *argv[])
 {
+	cout << "Ah, okay! Someone's actually observing the standard output :-)" << endl;
+	cout << "Welcome to Hamsi Bro !!!" << endl;
+	cout << "Your one and only hamster brother. - Don't kill him, you won't get another one"<<endl;
 	init ();
 	loadResources ();
 	gameStage ();
