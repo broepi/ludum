@@ -32,6 +32,7 @@ int lasttick, curtick;
 // Sounds -----------------------------------------------------------------------
 
 Mix_Chunk *chord;
+Mix_Chunk *sndFillBowl, *sndFillBottle, *sndCrunch, *sndDrink, *sndSnip, *sndPlop;
 
 // Objects -----------------------------------------------------------------------
 
@@ -51,6 +52,12 @@ void loadResources ()
 	loadTextures ();
 
 	chord = Mix_LoadWAV ("res/f7chord.ogg");
+	sndFillBowl = Mix_LoadWAV ("res/fillbowl.ogg");
+	sndFillBottle = Mix_LoadWAV ("res/fillbottle.ogg");
+	sndCrunch = Mix_LoadWAV ("res/crunch.ogg");
+	sndDrink = Mix_LoadWAV ("res/drinking.ogg");
+	sndSnip = Mix_LoadWAV ("res/snip.ogg");
+	sndPlop = Mix_LoadWAV ("res/plop.ogg");
 }
 
 inline bool inReachOf (int x, int y, int ox, int oy)
@@ -94,13 +101,13 @@ void exhaustFood ()
 
 void loadPower ()
 {
-	hamsi->power += 0.33;
+	hamsi->power += 0.1;
 	hamsi->power = min (hamsi->power, 10.0f);
 }
 
 void exhaustPower ()
 {
-	hamsi->power -= 0.01;
+	hamsi->power -= 0.003;
 	hamsi->power = max (hamsi->power, 0.0f);
 }
 
@@ -119,10 +126,6 @@ void moveHamsi ()
 {
 	hamsi->x += hamsi->vx;
 	hamsi->y += hamsi->vy;
-	/*
-	hamsi->x = min ((float)800-32, max ((float)0  +32, hamsi->x));
-	hamsi->y = min ((float)600-32, max ((float)300+32, hamsi->y));
-	*/
 }
 
 void poop ()
@@ -132,6 +135,7 @@ void poop ()
 	newBean->y = hamsi->y;
 	newBean->style = randInt (0,1);
 	pooBeans.push_back (newBean);
+	playSnd (sndPlop);
 }
 
 // State changes --------------------------------------------------------
@@ -143,7 +147,7 @@ void hamsiEnterIdling ()
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
 	hamsi->dwell = randInt (FPS*1, FPS*16);
-	cout << "enter idling for secs " << hamsi->dwell / (float)FPS << endl;
+	cout << "idling for secs " << hamsi->dwell / (float)FPS << endl;
 }
 
 void hamsiEnterSleeping ()
@@ -152,7 +156,7 @@ void hamsiEnterSleeping ()
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
-	cout << "enter sleeping" << endl;
+	cout << "sleeping" << endl;
 }
 
 void hamsiEnterEating ()
@@ -161,7 +165,8 @@ void hamsiEnterEating ()
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
-	cout << "enter eating" << endl;
+	playSnd (sndCrunch);
+	cout << "eating" << endl;
 }
 
 void hamsiEnterWalking ()
@@ -178,7 +183,7 @@ void hamsiEnterWalking ()
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
 	hamsi->dwell = dist / walkSpeed;
-	cout << "enter walking to " << hamsi->destx << " " << hamsi->desty << endl;
+	cout << "walking to " << hamsi->destx << " " << hamsi->desty << endl;
 }
 
 void hamsiEnterWheeling ()
@@ -187,7 +192,8 @@ void hamsiEnterWheeling ()
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
-	cout << "enter wheeling" << endl;
+	hamsi->dwell = randInt (FPS*1, FPS*16);
+	cout << "wheeling for seconds " << hamsi->dwell / (float)FPS << endl;
 }
 
 void hamsiGoDrinking ()
@@ -213,7 +219,8 @@ void hamsiEnterDrinking ()
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
-	cout << "enter drinking" << endl;
+	playSnd (sndDrink);
+	cout << "drinking" << endl;
 }
 
 void hamsiGoEating ()
@@ -254,20 +261,37 @@ void hamsiGoWheeling ()
 
 bool checkForNeeds ()
 {
-	if (hamsi->water < 5 && bottleWater > 0) {
-		hamsiGoDrinking ();
-		return true;
+	int minval = 10;
+	int minvar = 0; // hamsi state variable symbol
+
+	if (hamsi->water < minval && bottleWater > 0) {
+		minval = hamsi->water;
+		minvar = WATER;
 	}
-	else if (hamsi->food < 5 && bowlFood) {
-		hamsiGoEating ();
-		return true;
+	if (hamsi->food < minval && bowlFood) {
+		minval = hamsi->food;
+		minvar = FOOD;
 	}
-	else if (hamsi->power < 5) {
-		hamsiEnterSleeping ();
-		return true;
+	if (hamsi->power < minval) {
+		minval = hamsi->power;
+		minvar = POWER;
 	}
-	else
-		return false;
+	
+	if (minval < 5) {
+		switch (minvar) {
+		case WATER:
+			hamsiGoDrinking ();
+			return true;
+		case FOOD:
+			hamsiGoEating ();
+			return true;
+		case POWER:
+			hamsiEnterSleeping ();
+			return true;
+		}
+	}
+	
+	return false;
 }
 
 //////////////////////////////////////////////----------------------------------------------
@@ -285,13 +309,18 @@ void handleGameMoment ()
 		}
 		else if ( checkForNeeds () )
 			break;
+		// randomly need for wheeling
+		else if (randInt (1,100) == 1) {
+			hamsiGoWheeling ();
+			break;
+		}
 	
 		exhaustWater ();
 		exhaustFood ();
 		exhaustPower ();
 	
 		// Animation
-		if (hamsi->anima == 0 && rand()%50 == 1) {
+		if (hamsi->anima == 0 && randInt (1,50) == 1) {
 			hamsi->anima = randInt (1,2);
 			hamsi->anictr = 0;
 		}
@@ -394,13 +423,16 @@ void handleGameMoment ()
 	case wheelingState:
 	
 		// actions / state transitions
-		if (hamsi->lastchange > FPS*2) {
+		if (hamsi->lastchange > hamsi->dwell) {
 			hamsiEnterWalking ();
+			break;
 		}
+		else if ( checkForNeeds () )
+			break;
 		
 		exhaustWater ();
 		exhaustFood ();
-		loadPower ();
+		exhaustPower ();
 	
 		// Animation
 		if (hamsi->anictr > 1) {
@@ -452,9 +484,13 @@ void gameStage ()
 	hamsi->food = 10;
 	hamsi->water = 10;
 	hamsi->power = 10;
+	hamsi->health = 10;
 	
 	hamsiEnterIdling ();
 	
+	
+	
+	// Lé GAMELOOP
 	
 	running = true;
 	
@@ -468,11 +504,26 @@ void gameStage ()
 			case SDL_MOUSEBUTTONDOWN:
 				if (pointInBox (event.button.x, event.button.y, &rcBtnWater)) {
 					refreshBottle ();
-					Mix_PlayChannel (-1, chord, 0);
+					playSnd (sndSnip);
+					playSnd (sndFillBottle);
 				}
 				else if (pointInBox (event.button.x, event.button.y, &rcBtnFood)) {
 					bowlFood = true;
-					Mix_PlayChannel (-1, chord, 0);
+					playSnd (sndSnip);
+					playSnd (sndFillBowl);
+				}
+				else {
+					// check if a bean was clicked
+					for (list<PooBean*>::iterator it = pooBeans.begin ();
+						it != pooBeans.end (); it ++)
+					{
+						SDL_Rect boundingBox = {(*it)->x - 16, (*it)->y - 16 , 32, 32};
+						if (pointInBox (event.button.x, event.button.y, &boundingBox)) {
+							pooBeans.erase (it);
+							playSnd (sndSnip);
+							break;
+						}
+					}
 				}
 				break;
 			case SDL_MOUSEMOTION:

@@ -22,6 +22,11 @@
 
 #define walkSpeed 5
 
+// hamsi state variable symbols
+#define WATER 0
+#define FOOD  1
+#define POWER 2
+
 
 // Classes .....................................................................
 
@@ -32,6 +37,7 @@ struct Hamsi {
 	float food;  // 0..10
 	float water; // 0..10
 	float power; // 0..10
+	float health; // 0..10
 	
 	// all states
 	int dwell; // for how many frames will the hamsi bro do this action

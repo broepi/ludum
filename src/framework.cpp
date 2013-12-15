@@ -78,3 +78,8 @@ void draw (Texture *tex, int x, int y, int cx, int cy, bool hflip)
 		hflip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 }
 
+void playSnd (Mix_Chunk *snd)
+{
+	Mix_PlayChannel (-1, snd, 0);
+}
+

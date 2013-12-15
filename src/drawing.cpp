@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include <list>
+#include <set>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -34,6 +35,7 @@ Texture *bottleE, *bottleF;
 Texture *bowl, *bowl2;
 Texture *poobean1, *poobean2;
 Texture *foodPoint, *waterPoint, *powerPoint, *foodPointE, *waterPointE, *powerPointE;
+Texture *healthPoint, *healthPointE;
 Texture *btnFood, *btnWater;
 
 // Functions ----------------------------------------------------------------------
@@ -64,12 +66,14 @@ void loadTextures ()
 	waterPointE  = loadTexture ("res/waterpointE.png");
 	powerPoint = loadTexture ("res/powerpoint.png"); 
 	powerPointE = loadTexture ("res/powerpointE.png"); 
+	healthPoint = loadTexture ("res/healthpoint.png"); 
+	healthPointE = loadTexture ("res/healthpointE.png"); 
 	btnFood = loadTexture ("res/btnFood.png");
 	btnWater = loadTexture ("res/btnWater.png");
 }
 
 
-void drawHamsi ()
+void drawHamsi (PooBean *b)
 {
 	bool hflip;
 	switch (hamsi->state) {
@@ -129,24 +133,39 @@ void drawHamsi ()
 	};
 }
 
-void drawGameScene ()
+DrawingLayer::DrawingLayer (int _type, PooBean *_bean, int _x, int _y, int _cx, int _cy,
+	DrawFunc _drawFunc)
 {
-	Texture *tex;
+	type = _type; bean = _bean; x = _x; y = _y; cx = _cx; cy = _cy; drawFunc = _drawFunc;
+}
 
-	// background
-	draw (background, 0, 0);
+struct layerLess {
+	bool operator () (DrawingLayer *a, DrawingLayer *b)
+	{
+		return a->y < b->y;
+	}
+};
+
+void drawTree (PooBean *b)
+{
 	draw (tree, 0, 0);
-	
-	// bowl
+}
+
+void drawWheel (PooBean *b)
+{
+	draw (wheel, 540, 290, 54, 112);
+}
+
+void drawBowl (PooBean *b)
+{
 	if (bowlFood)
 		draw (bowl2, 720, 350, 63, 57);
 	else
 		draw (bowl, 720, 350, 63, 57);
-	
-	// wheel
-	draw (wheel, 540, 290, 54, 112);
+}
 
-	// bottle
+void drawBottle (PooBean *unused)
+{
 	int x = 750;
 	int y = 500;
 	int cx = 32;
@@ -160,22 +179,37 @@ void drawGameScene ()
 	SDL_Rect dstrectF = {x-cx, y-cy + 11 + waterbarTotal * a, bottleE->w, waterbarTotal * b + 28};
 	SDL_RenderCopyEx (renderer, bottleE->tex, &srcrect, &dstrect, 0, 0, SDL_FLIP_NONE);
 	SDL_RenderCopyEx (renderer, bottleF->tex, &srcrectF, &dstrectF, 0, 0, SDL_FLIP_NONE);
+}
+
+void drawBean (PooBean *b)
+{
+	if ( b->style == 0)
+		draw (poobean1, b->x, b->y, 16,16);
+	else
+		draw (poobean2, b->x, b->y, 16,16);
+}
+
+void drawGameScene ()
+{
+	// background
+	draw (background, 0, 0);
 	
-	// poo beans
-	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++) {
-		if ( (*it)->style == 0) {
-			draw (poobean1, (*it)->x, (*it)->y, 16,16);
-		}
-		else {
-			draw (poobean2, (*it)->x, (*it)->y, 16,16);
-		}
-	}
-	
-	// hamsi
-	drawHamsi ();
+	// all layered objects
+	multiset <DrawingLayer*, layerLess> layers;
+	layers.clear ();
+	layers.insert (new DrawingLayer (layerTree, 0, 200, 470, 200, 470, drawTree));
+	layers.insert (new DrawingLayer (layerHamsi, 0, hamsi->x, hamsi->y, 32, 43, drawHamsi));
+	layers.insert (new DrawingLayer (layerWheel, 0, 540, 290, 54, 112, drawWheel));
+	layers.insert (new DrawingLayer (layerBowl, 0, 540, 290, 54, 112, drawBowl));
+	layers.insert (new DrawingLayer (layerBottle, 0, 540, 290, 54, 112, drawBottle));
+	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++)
+		layers.insert (new DrawingLayer (layerPooBean, *it, (*it)->x, (*it)->y, 16,16, drawBean));
+	for (multiset <DrawingLayer*, layerLess>::iterator it = layers.begin (); it != layers.end (); it++)
+		(*it)->drawFunc ( (*it)->bean );
 	
 	// status bars
 	for (int i = 0; i<10; i++) {
+		Texture *tex;
 		// food
 		if (i < hamsi->food)
 			tex = foodPoint;
@@ -194,6 +228,12 @@ void drawGameScene ()
 		else
 			tex = powerPointE;
 		draw (tex, i*28 + 16, 16, 0, 0);
+		// health
+		if (i < hamsi->health)
+			tex = healthPoint;
+		else
+			tex = healthPointE;
+		draw (tex, 800 - i*28 - 16, 16, 32, 0);
 	}
 	
 	// sidebar
