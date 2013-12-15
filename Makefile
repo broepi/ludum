@@ -1,7 +1,7 @@
 
 .PHONY: build, rebuild, clean
 
-PROJECT = mygame
+PROJECT = hamsibro
 CC = g++
 COMPFLAGS = -I/usr/include/SDL2 -Wno-write-strings
 LIBS = -lSDL2_image -lSDL2_mixer -lSDL2

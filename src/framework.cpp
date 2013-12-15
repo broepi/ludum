@@ -37,7 +37,7 @@ void init ()
 	
 	Mix_Init (MIX_INIT_OGG);
 
-	window = SDL_CreateWindow ("broepis game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+	window = SDL_CreateWindow ("Hamsi Bro", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		800, 600, 0);
 
 	renderer = SDL_CreateRenderer (window, -1, SDL_RENDERER_ACCELERATED);

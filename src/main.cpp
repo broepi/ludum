@@ -90,6 +90,18 @@ void exhaustFood ()
 	hamsi->food = max (hamsi->food, 0.0f);
 }
 
+void loadPower ()
+{
+	hamsi->power += 0.33;
+	hamsi->power = min (hamsi->power, 10.0f);
+}
+
+void exhaustPower ()
+{
+	hamsi->power -= 0.033;
+	hamsi->power = max (hamsi->power, 0.0f);
+}
+
 void exhaustBottle ()
 {
 	bottleWater -= 0.05;
@@ -157,6 +169,10 @@ void hamsiEnterWalking ()
 void hamsiEnterWheeling ()
 {
 	cout << "enter wheeling" << endl;
+	hamsi->state = wheelingState;
+	hamsi->lastchange = 0;
+	hamsi->anima = 0;
+	hamsi->anictr = 0;
 }
 
 void hamsiGoDrinking ()
@@ -202,6 +218,23 @@ void hamsiGoEating ()
 	cout << "go eating" << endl;
 }
 
+void hamsiGoWheeling ()
+{
+	hamsi->destx = wheelPointX;
+	hamsi->desty = wheelPointY;
+	float dx = hamsi->destx - hamsi->x;
+	float dy = hamsi->desty - hamsi->y;
+	float dist = sqrt (dx*dx + dy*dy);
+	hamsi->vx = dx * walkSpeed / dist;
+	hamsi->vy = dy * walkSpeed / dist;
+	hamsi->state = goWheelingState;
+	hamsi->lastchange = 0;
+	hamsi->anima = 0;
+	hamsi->anictr = 0;
+	hamsi->dwell = dist / walkSpeed;
+	cout << "go wheeling" << endl;
+}
+
 //////////////////////////////////////////////----------------------------------------------
 
 void handleGameMoment ()
@@ -214,6 +247,9 @@ void handleGameMoment ()
 		if (hamsi->lastchange > hamsi->dwell) {
 			hamsiEnterWalking ();
 		}
+		else if (hamsi->power < 5) {
+			hamsiGoWheeling ();
+		}
 		else if (hamsi->food < 5 && bowlFood) {
 			hamsiGoEating ();
 		}
@@ -223,6 +259,7 @@ void handleGameMoment ()
 	
 		exhaustWater ();
 		exhaustFood ();
+		exhaustPower ();
 	
 		// Animation
 		if (hamsi->anima == 0 && rand()%50 == 1) {
@@ -248,6 +285,7 @@ void handleGameMoment ()
 	
 		exhaustWater ();
 		exhaustFood ();
+		exhaustPower ();
 
 		
 		moveHamsi ();
@@ -261,6 +299,7 @@ void handleGameMoment ()
 		
 	case goDrinkingState:
 	case goEatingState:
+	case goWheelingState:
 	
 		// actions
 		if (hamsi->state == goDrinkingState) {
@@ -277,10 +316,17 @@ void handleGameMoment ()
 				hamsiEnterEating ();
 			}
 		}
+		else if (hamsi->state == goWheelingState) {
+			if (hamsi->lastchange >= hamsi->dwell) {
+				hamsi->x = hamsi->destx;
+				hamsi->y = hamsi->desty;
+				hamsiEnterWheeling ();
+			}
+		}
 	
 		exhaustWater ();
 		exhaustFood ();
-		
+		exhaustPower ();
 		
 		
 		moveHamsi ();
@@ -301,6 +347,7 @@ void handleGameMoment ()
 		
 		loadWater ();
 		exhaustFood ();
+		exhaustPower ();
 		exhaustBottle ();
 		
 		cout << "water fuelness: " << bottleWater << endl;
@@ -317,6 +364,27 @@ void handleGameMoment ()
 		
 		exhaustWater ();
 		loadFood ();
+		exhaustPower ();
+		
+		break;
+
+	case wheelingState:
+	
+		// actions
+		if (hamsi->lastchange > FPS*2) {
+			bowlFood = false;
+			hamsiEnterWalking ();
+		}
+		
+		exhaustWater ();
+		exhaustFood ();
+		loadPower ();
+	
+		// Animation
+		if (hamsi->anictr > 1) {
+			hamsi->anictr = 0;
+			hamsi->anima = hamsi->anima == 1 ? 0 : 1;
+		}
 		
 		break;
 
@@ -340,6 +408,7 @@ void gameStage ()
 	hamsi->y = 400;
 	hamsi->food = 10;
 	hamsi->water = 10;
+	hamsi->power = 10;
 	
 	hamsiEnterIdling ();
 	

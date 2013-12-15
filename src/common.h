@@ -11,11 +11,14 @@
 #define goDrinkingState 5
 #define drinkingState 6
 #define goEatingState 7
+#define goWheelingState 8
 
 #define drinkPointX 715
 #define drinkPointY 496
 #define eatPointX 721
 #define eatPointY 324
+#define wheelPointX 540
+#define wheelPointY 275
 
 #define hungerDec 0.033
 #define thirstDec 0.033
@@ -33,6 +36,7 @@ struct Hamsi {
 	int lastchange; // counts frames from last state change
 	float food;  // 0..10
 	float water; // 0..10
+	float power; // 0..10
 	
 	// all states
 	int dwell; // for how many frames will the hamsi bro do this action

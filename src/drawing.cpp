@@ -23,13 +23,14 @@ extern bool bowlFood;
 // Graphics -----------------------------------------------------------------------
 
 Texture *background;
+Texture *tree;
 Texture *hamsi1, *hamsi2, *hamsi3, *sleeping, *sleeping2, *walking, *walking2;
 Texture *drinking;
 Texture *omnomnom;
 Texture *wheel;
 Texture *bottleE, *bottleF;
 Texture *bowl, *bowl2;
-Texture *foodPoint, *waterPoint, *foodPointE, *waterPointE;
+Texture *foodPoint, *waterPoint, *powerPoint, *foodPointE, *waterPointE, *powerPointE;
 Texture *btnFood, *btnWater;
 
 // Functions ----------------------------------------------------------------------
@@ -37,6 +38,7 @@ Texture *btnFood, *btnWater;
 void loadTextures ()
 {
 	background = loadTexture ("res/background.png");
+	tree = loadTexture ("res/background2.png");
 	hamsi1 = loadTexture ("res/hamsi1.png");
 	hamsi2 = loadTexture ("res/hamsi2.png");
 	hamsi3 = loadTexture ("res/hamsi3.png");
@@ -55,6 +57,8 @@ void loadTextures ()
 	foodPointE = loadTexture ("res/foodpointE.png"); 
 	waterPoint = loadTexture ("res/waterpoint.png"); 
 	waterPointE  = loadTexture ("res/waterpointE.png");
+	powerPoint = loadTexture ("res/powerpoint.png"); 
+	powerPointE = loadTexture ("res/powerpointE.png"); 
 	btnFood = loadTexture ("res/btnFood.png");
 	btnWater = loadTexture ("res/btnWater.png");
 }
@@ -80,6 +84,7 @@ void drawHamsi ()
 	case walkingState:
 	case goDrinkingState:
 	case goEatingState:
+	case goWheelingState:
 		hflip = hamsi->vx > 0;
 		switch (hamsi->anima) {
 		case 0:
@@ -96,6 +101,17 @@ void drawHamsi ()
 	case eatingState:
 		draw (omnomnom, hamsi->x, hamsi->y, 32, 32);
 		break;
+	case wheelingState:
+		//hflip = hamsi->vx > 0;
+		switch (hamsi->anima) {
+		case 0:
+			draw (walking, hamsi->x, hamsi->y, 32, 32);
+			break;
+		case 1:
+			draw (walking2, hamsi->x, hamsi->y, 32, 32);
+			break;
+		}
+		break;
 	};
 }
 
@@ -105,16 +121,18 @@ void drawGameScene ()
 
 	// background
 	draw (background, 0, 0);
+	draw (tree, 0, 0);
 	
 	// bowl
 	if (bowlFood)
 		draw (bowl2, 720, 350, 63, 57);
 	else
 		draw (bowl, 720, 350, 63, 57);
+	
+	// wheel
+	draw (wheel, 540, 290, 54, 112);
 
 	// bottle
-	//SDL_Rect srcrect;
-	//SDL_Rect dstrect;
 	int x = 750;
 	int y = 500;
 	int cx = 32;
@@ -146,6 +164,12 @@ void drawGameScene ()
 		else
 			tex = waterPointE;
 		draw (tex, 800 - i*28 - 16, 600 - 16, 32, 32);
+		// power
+		if (i < hamsi->power)
+			tex = powerPoint;
+		else
+			tex = powerPointE;
+		draw (tex, i*28 + 16, 16, 0, 0);
 	}
 	
 	// sidebar
