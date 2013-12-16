@@ -18,4 +18,4 @@ Author: broepi
 Screenshots
 -----------
 
-![Your one and only Hamsi Bro](/screenshots/screesnhot4.png)
+![Your one and only Hamsi Bro](/screenshots/screenshot4.png)
