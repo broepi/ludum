@@ -1,0 +1,37 @@
+<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE project PUBLIC "-//audacityproject-1.3.0//DTD//EN" "http://audacity.sourceforge.net/xml/audacityproject-1.3.0.dtd" >
+<project xmlns="http://audacity.sourceforge.net/xml/" projname="gameover_data" version="1.3.0" audacityversion="2.0.3" sel0="0.0000000000" sel1="6.7368707483" vpos="0" h="0.0000000000" zoom="86.1328125000" rate="44100.0">
+	<tags/>
+	<wavetrack name="Tonspur" channel="0" linked="1" mute="0" solo="0" height="150" minimized="0" isSelected="1" rate="44100" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="297096">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000f09.au" len="260744" min="-0.876866" max="0.889105" rms="0.152059"/>
+				</waveblock>
+				<waveblock start="260744">
+					<simpleblockfile filename="e0000e7d.au" len="36352" min="-0.082495" max="0.066458" rms="0.019838"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="2">
+				<controlpoint t="0.824308390023" val="0.805555582047"/>
+				<controlpoint t="6.736865748299" val="0.111111104488"/>
+			</envelope>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="Tonspur" channel="1" linked="0" mute="0" solo="0" height="150" minimized="0" isSelected="1" rate="44100" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="297096">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000c27.au" len="260744" min="-0.879517" max="0.891251" rms="0.152427"/>
+				</waveblock>
+				<waveblock start="260744">
+					<simpleblockfile filename="e0000936.au" len="36352" min="-0.082874" max="0.06671" rms="0.019877"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="2">
+				<controlpoint t="0.824308390023" val="0.805555582047"/>
+				<controlpoint t="6.736865748299" val="0.111111104488"/>
+			</envelope>
+		</waveclip>
+	</wavetrack>
+</project>

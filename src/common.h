@@ -17,7 +17,7 @@
 #define drinkPointX 715
 #define drinkPointY 496
 #define eatPointX 721
-#define eatPointY 324
+#define eatPointY 300
 #define wheelPointX 540
 #define wheelPointY 275
 
@@ -59,4 +59,6 @@ struct PooBean {
 	int x, y;
 	int style; // 0..1
 };
+
+string humanReadableAge ();
 

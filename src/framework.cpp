@@ -71,7 +71,7 @@ void cleanup ()
 	SDL_Quit ();
 }
 
-Texture *loadTexture (char *filename)
+Texture *loadTexture (const char *filename)
 {
 	Texture *result = new Texture;
 	result->tex = IMG_LoadTexture (renderer, filename);

@@ -32,8 +32,9 @@ void hamsiEnterIdling ();
 
 TTF_Font *font;
 
-const SDL_Rect rcBtnWater = {736,0,64,64};
-const SDL_Rect rcBtnFood = {736,64,64,64};
+const SDL_Rect rcBtnWater = {736,64,64,64};
+const SDL_Rect rcBtnFood = {736,128,64,64};
+const SDL_Rect rcLink = {800-32,64,32,32};
 
 bool running;
 bool brokeUp = false;
@@ -44,6 +45,8 @@ int lasttick, curtick;
 
 Mix_Chunk *chord;
 Mix_Chunk *sndFillBowl, *sndFillBottle, *sndCrunch, *sndDrink, *sndSnip, *sndPlop;
+Mix_Chunk *sndWalking, *sndWheeling;
+Mix_Chunk *sndRIP;
 
 // Objects -----------------------------------------------------------------------
 
@@ -52,6 +55,7 @@ list<PooBean*> pooBeans;
 TextLabel *lblNamePrompt;
 TextLabel *lblNameInput;
 TextLabel *lblName1, *lblName2, *lblAge1, *lblAge2;
+TextLabel *lblEnd1, *lblEnd2;
 
 // Colors *****************************************************************************
 
@@ -64,9 +68,31 @@ bool newGame = true;
 
 bool sidebarOut;
 float bottleWater; // 0..10
-bool bowlFood;
+float bowlFood; // 0..10
+
+/*
+bool sndloopWalk = false;
+bool sndloopWheel = false;
+bool sndloopDrink = false;
+bool sndloopEat = false;
+*/
+int sndchWalk, sndchWheel, sndchDrink, sndchEat;
 
 // --- Functions --- -----------------------------------------------------------------------
+
+void stopLoops ()
+{
+	Mix_HaltChannel (sndchWalk);
+	Mix_HaltChannel (sndchWheel);
+	Mix_HaltChannel (sndchDrink);
+	Mix_HaltChannel (sndchEat);
+}
+
+void playLoop (Mix_Chunk *snd, int *chvar)
+{
+	stopLoops ();
+	*chvar = Mix_PlayChannel (-1, snd, -1);
+}
 
 void createHamsi ()
 {
@@ -75,10 +101,10 @@ void createHamsi ()
 	hamsi->age = 0;
 	hamsi->x = 400;
 	hamsi->y = 400;
-	hamsi->food = 10;
-	hamsi->water = 10;
-	hamsi->power = 10;
-	hamsi->health = 10;
+	hamsi->food = 6;
+	hamsi->water = 6;
+	hamsi->power = 6;
+	hamsi->health = 6;
 	
 	hamsiEnterIdling ();
 }
@@ -103,6 +129,9 @@ void saveToDisk ()
 		fwrite (bean, sizeof (PooBean), 1, fs);
 	}
 	
+	fwrite (&bottleWater, sizeof (float), 1, fs);
+	fwrite (&bowlFood, sizeof (float), 1, fs);
+	
 	fclose (fs);
 }
 
@@ -111,8 +140,14 @@ void loadFromDisk ()
 	FILE *fs = fopen ("savegame", "rb");
 	
 	if (fs==0) {
+		
+		cout << "Did you try to delete the save file? This doesn't help!" << endl;
+		exit (-1);
+		
 		createHamsi ();
 		pooBeans.clear ();
+		bottleWater = 10;
+		bowlFood = 10;
 		saveToDisk ();
 		return;
 	}
@@ -122,6 +157,8 @@ void loadFromDisk ()
 		cout << "NEWGAME" << endl;
 		createHamsi ();
 		pooBeans.clear ();
+		bottleWater = 10;
+		bowlFood = 10;
 	}
 	else {
 		hamsi = new Hamsi;
@@ -140,6 +177,8 @@ void loadFromDisk ()
 			fread (newBean, sizeof(PooBean), 1, fs);
 			pooBeans.push_back (newBean);
 		}
+		fread (&bottleWater, sizeof (float), 1, fs);
+		fread (&bowlFood, sizeof (float), 1, fs);
 	}
 	
 	fclose (fs);
@@ -156,6 +195,9 @@ void loadResources ()
 	sndDrink = Mix_LoadWAV ("res/drinking.ogg");
 	sndSnip = Mix_LoadWAV ("res/snip.ogg");
 	sndPlop = Mix_LoadWAV ("res/plop.ogg");
+	sndWalking  = Mix_LoadWAV ("res/walk.ogg");
+	sndWheeling  = Mix_LoadWAV ("res/wheeling.ogg");
+	sndRIP  = Mix_LoadWAV ("res/gameover.ogg");
 	
 	font = TTF_OpenFont ("res/Ubuntu-R.ttf", 20);
 	if (font == 0) {
@@ -182,55 +224,62 @@ inline int randInt (int first, int last)
 string humanReadableAge ()
 {
 	double seconds = hamsi->age / FPS;
+	string result = "";
 	stringstream ss;
-	ss << (long)seconds << " seconds";
-	return ss.str();
-}
 
-void loadWater ()
-{
-	hamsi->water += 0.33;
-	hamsi->water = min (hamsi->water, 10.0f);
-}
-
-void exhaustWater ()
-{
-	hamsi->water -= 0.01;
-	hamsi->water = max (hamsi->water, 0.0f);
-}
-
-void loadFood ()
-{
-	hamsi->food += 0.33;
-	hamsi->food = min (hamsi->food, 10.0f);
-}
-
-void exhaustFood ()
-{
-	hamsi->food -= 0.005;
-	hamsi->food = max (hamsi->food, 0.0f);
-}
-
-void loadPower ()
-{
-	hamsi->power += 0.1;
-	hamsi->power = min (hamsi->power, 10.0f);
-}
-
-void exhaustPower ()
-{
-	hamsi->power -= 0.003;
-	hamsi->power = max (hamsi->power, 0.0f);
+	ss << (((int)seconds)%60) << " seconds";
+	result += ss.str ();
+	ss.str ("");
+	if ( seconds > 60 ) {
+		double minutes = seconds / 60;
+		ss << (((int)minutes)%60) << " minutes ";
+		result = ss.str () + result;
+		ss.str ("");
+		if ( minutes > 60 ) {
+			double hours = minutes / 60;
+			ss << " " << (((int)hours)%24) << " hours ";
+			result = ss.str () + result;
+			ss.str ("");
+			if ( hours > 24 ) {
+				double days = hours / 24;
+				ss << " " << ((int)days) << " days ";
+				result = ss.str () + result;
+				ss.str ("");
+			}
+		}
+	}
+	
+	return result;
 }
 
 void exhaustBottle ()
 {
-	bottleWater -= 0.05;
+	bottleWater -= 1.0 / (6*FPS);
 	bottleWater = max (bottleWater, 0.0f);
+}
+
+void exhaustBowl ()
+{
+	bowlFood -= 1.0 / (12*FPS);
+	bowlFood = max (bowlFood, 0.0f);
 }
 
 void updateHamsiVars ()
 {
+	const float
+		waterInc = 1.0 / ( 1*FPS),  foodInc = 1.0 / ( 1*FPS) , powerInc = 1.0 / (60*FPS),
+		waterDec = 1.0 / (60*FPS),  foodDec = 1.0 / (120*FPS), powerDec = 1.0 / (360*FPS);
+	/*
+	const float
+		waterInc = 1.0 / ( 1*FPS),  foodInc = 1.0 / ( 1*FPS) , powerInc = 1.0 / (60*FPS),
+		waterDec = 1.0 / (6*FPS),  foodDec = 1.0 / (12*FPS), powerDec = 1.0 / (360*FPS);
+	*/
+		
+	float healthChange;
+	
+	healthChange =
+		(hamsi->water + hamsi->food + hamsi->power - 15.0 - pooBeans.size ()) / (30.0 * FPS);
+	
 	switch (hamsi->state) {
 	
 	case idlingState:
@@ -240,38 +289,46 @@ void updateHamsiVars ()
 	case goWheelingState:
 	case wheelingState:
 	
-		exhaustWater ();
-		exhaustFood ();
-		exhaustPower ();
+		hamsi->water = max (hamsi->water - waterDec, 0.0f);
+		hamsi->food = max (hamsi->food - foodDec, 0.0f);
+		hamsi->power = max (hamsi->power - powerDec, 0.0f);
 		break;
 	
 	case drinkingState:
 	
-		loadWater ();
-		exhaustFood ();
-		exhaustPower ();
+		hamsi->water = min (hamsi->water + waterInc, 10.0f);
+		hamsi->food = max (hamsi->food - foodDec, 0.0f);
+		hamsi->power = max (hamsi->power - powerDec, 0.0f);
 		break;
 
 	case eatingState:
 	
-		exhaustWater ();
-		loadFood ();
-		exhaustPower ();
+		hamsi->water = max (hamsi->water - waterDec, 0.0f);
+		hamsi->food = min (hamsi->food + foodInc, 10.0f);
+		hamsi->power = max (hamsi->power - powerDec, 0.0f);
 		break;
 
 	case sleepingState:
 		
-		exhaustWater ();
-		exhaustFood ();
-		loadPower ();
+	
+		hamsi->water = max (hamsi->water - waterDec, 0.0f);
+		hamsi->food = max (hamsi->food - foodDec, 0.0f);
+		hamsi->power = min (hamsi->power + powerInc, 10.0f);
 		break;
 	
 	}
+	
+	hamsi->health = max (min (hamsi->health + healthChange, 10.0f), 0.0f);
 }
 
 void refreshBottle ()
 {
 	bottleWater = 10;
+}
+
+void refreshBowl ()
+{
+	bowlFood = 10;
 }
 
 void moveHamsi ()
@@ -294,6 +351,7 @@ void poop ()
 
 void hamsiEnterIdling ()
 {
+	stopLoops ();
 	hamsi->state = idlingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
@@ -304,6 +362,7 @@ void hamsiEnterIdling ()
 
 void hamsiEnterSleeping ()
 {
+	stopLoops ();
 	hamsi->state = sleepingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
@@ -313,16 +372,17 @@ void hamsiEnterSleeping ()
 
 void hamsiEnterEating ()
 {
+	playLoop (sndCrunch, &sndchEat);
 	hamsi->state = eatingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
-	playSnd (sndCrunch);
 	cout << "eating" << endl;
 }
 
 void hamsiEnterWalking ()
 {
+	playLoop (sndWalking, &sndchWalk);
 	hamsi->destx = randInt (32, 800-32);
 	hamsi->desty = randInt (300, 600-32);
 	float dx = hamsi->destx - hamsi->x;
@@ -340,6 +400,7 @@ void hamsiEnterWalking ()
 
 void hamsiEnterWheeling ()
 {
+	playLoop (sndWheeling, &sndchWheel);
 	hamsi->state = wheelingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
@@ -350,6 +411,7 @@ void hamsiEnterWheeling ()
 
 void hamsiGoDrinking ()
 {
+	playLoop (sndWalking, &sndchWalk);
 	hamsi->destx = drinkPointX;
 	hamsi->desty = drinkPointY;
 	float dx = hamsi->destx - hamsi->x;
@@ -367,16 +429,17 @@ void hamsiGoDrinking ()
 
 void hamsiEnterDrinking ()
 {
+	playLoop (sndDrink, &sndchDrink);
 	hamsi->state = drinkingState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
-	playSnd (sndDrink);
 	cout << "drinking" << endl;
 }
 
 void hamsiGoEating ()
 {
+	playLoop (sndWalking, &sndchWalk);
 	hamsi->destx = eatPointX;
 	hamsi->desty = eatPointY;
 	float dx = hamsi->destx - hamsi->x;
@@ -394,6 +457,7 @@ void hamsiGoEating ()
 
 void hamsiGoWheeling ()
 {
+	playLoop (sndWalking, &sndchWalk);
 	hamsi->destx = wheelPointX;
 	hamsi->desty = wheelPointY;
 	float dx = hamsi->destx - hamsi->x;
@@ -411,10 +475,13 @@ void hamsiGoWheeling ()
 
 void hamsiDie ()
 {
+	stopLoops ();
+	playSnd (sndRIP);
 	hamsi->state = deadState;
 	hamsi->lastchange = 0;
 	hamsi->anima = 0;
 	hamsi->anictr = 0;
+	
 	cout << "hamster died" << endl;
 }
 
@@ -429,7 +496,7 @@ bool checkForNeeds ()
 		minval = hamsi->water;
 		minvar = WATER;
 	}
-	if (hamsi->food < minval && bowlFood) {
+	if (hamsi->food < minval && bowlFood > 0) {
 		minval = hamsi->food;
 		minvar = FOOD;
 	}
@@ -437,6 +504,7 @@ bool checkForNeeds ()
 		minval = hamsi->power;
 		minvar = POWER;
 	}
+	
 	
 	if (minval < 5) {
 		switch (minvar) {
@@ -465,6 +533,7 @@ void handleGameMoment ()
 	lblAge2->cy = 0;
 	
 	if (hamsi->state != deadState && hamsi->health <= 0) {
+		Mix_HaltChannel (-1);
 		hamsiDie ();
 	}
 
@@ -507,17 +576,15 @@ void handleGameMoment ()
 			hamsiEnterIdling ();
 			break;
 		}
-		else if ( checkForNeeds () )
+		else if ( checkForNeeds () ) {
 			break;
+		}
 		
 		if ( randInt (1,100) == 1 )
 			poop ();
 		
 	
 		updateHamsiVars ();
-
-
-		
 		moveHamsi ();
 	
 		// Animation
@@ -572,14 +639,20 @@ void handleGameMoment ()
 	case eatingState:
 	
 		// actions / state transitions
-		if (hamsi->food >= 10) {
-			bowlFood = false;
+		if (hamsi->food >= 10 || bowlFood <= 0) {
 			hamsiEnterWalking ();
 			break;
 		}
 
 		updateHamsiVars ();
-
+		exhaustBowl ();
+		
+	
+		// Animation
+		if (hamsi->anictr > 3) {
+			hamsi->anictr = 0;
+			hamsi->anima = hamsi->anima == 1 ? 0 : 1;
+		}
 		
 		break;
 
@@ -587,11 +660,13 @@ void handleGameMoment ()
 	
 		// actions / state transitions
 		if (hamsi->lastchange > hamsi->dwell) {
+			hamsi->y += 20;
 			hamsiEnterWalking ();
 			break;
 		}
-		else if ( checkForNeeds () )
+		else if ( checkForNeeds () ) {
 			break;
+		}
 		
 		updateHamsiVars ();
 	
@@ -622,7 +697,9 @@ void handleGameMoment ()
 
 	}
 	
-	hamsi->age ++;
+	if (hamsi->state != deadState)
+		hamsi->age ++;
+
 	hamsi->anictr ++;
 	hamsi->lastchange ++;
 }
@@ -715,8 +792,6 @@ void gameStage ()
 	lblAge2->cy = 0;
 		
 	sidebarOut = false;
-	bottleWater = 10;
-	bowlFood = true;
 	
 	
 	
@@ -739,7 +814,7 @@ void gameStage ()
 					playSnd (sndFillBottle);
 				}
 				else if (pointInBox (event.button.x, event.button.y, &rcBtnFood)) {
-					bowlFood = true;
+					refreshBowl ();
 					playSnd (sndSnip);
 					playSnd (sndFillBowl);
 				}
@@ -755,10 +830,14 @@ void gameStage ()
 							break;
 						}
 					}
+					
+					// else
+					//hamsi->x = event.button.x;
+					////hamsi->y = event.button.y;
 				}
 				break;
 			case SDL_MOUSEMOTION:
-				if (!sidebarOut && event.motion.x > 800-16)
+				if (pointInBox (event.motion.x, event.motion.y, &rcLink))
 					sidebarOut = true;
 				else if (sidebarOut && event.motion.x < 800-64)
 					sidebarOut = false;
@@ -777,6 +856,21 @@ void gameStage ()
 			
 			drawGameScene ();
 			
+			if (hamsi->state == deadState) {
+				stringstream ss;
+				ss << hamsi->name << " silently passed away.";
+				lblEnd1 = new TextLabel (font, ss.str (), 400, 200, white);
+				ss.str ("");
+				ss << "He reached an age of " << humanReadableAge ();
+				lblEnd2 = new TextLabel (font, ss.str (), 400, 230, white);
+				ss.str ("");
+			
+				lblEnd1->draw ();
+				lblEnd2->draw ();
+				
+				delete lblEnd1;
+				delete lblEnd2;
+			}			
 			SDL_RenderPresent (renderer);
 		}
 	}

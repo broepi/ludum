@@ -6,6 +6,7 @@
 #include <list>
 #include <set>
 #include <string>
+#include <sstream>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -23,12 +24,13 @@ using namespace std;
 extern Hamsi *hamsi;
 extern bool sidebarOut;
 extern float bottleWater;
-extern bool bowlFood;
+extern float bowlFood;
 extern list<PooBean*> pooBeans;
 extern TTF_Font *font;
 extern TextLabel *lblNamePrompt;
 extern TextLabel *lblNameInput;
 extern TextLabel *lblName1, *lblName2, *lblAge1, *lblAge2;
+extern TextLabel *lblEnd1, *lblEnd2;
 
 // Graphics -----------------------------------------------------------------------
 
@@ -36,15 +38,17 @@ Texture *background;
 Texture *tree;
 Texture *hamsi1, *hamsi2, *hamsi3, *sleeping1, *sleeping2, *walking, *walking2;
 Texture *drinking;
-Texture *omnomnom;
+Texture *omnomnom1, *omnomnom2;
 Texture *dead;
 Texture *wheel;
 Texture *bottleE, *bottleF;
-Texture *bowl, *bowl2;
+Texture *bowl [11];
 Texture *poobean1, *poobean2;
+Texture *poobean1H, *poobean2H;
 Texture *foodPoint, *waterPoint, *powerPoint, *foodPointE, *waterPointE, *powerPointE;
 Texture *healthPoint, *healthPointE;
 Texture *btnFood, *btnWater;
+Texture *link;
 
 // Functions ----------------------------------------------------------------------
 
@@ -60,15 +64,21 @@ void loadTextures ()
 	walking = loadTexture ("res/walking.png");
 	walking2 = loadTexture ("res/walking2.png");
 	drinking = loadTexture ("res/drinking.png");
-	omnomnom = loadTexture ("res/omnomnom.png");
+	omnomnom1 = loadTexture ("res/omnomnom1.png");
+	omnomnom2 = loadTexture ("res/omnomnom2.png");
 	dead = loadTexture ("res/dead.png");
 	wheel = loadTexture ("res/wheel.png");
 	bottleE = loadTexture ("res/bottle.png");
 	bottleF = loadTexture ("res/bottleF.png");
-	bowl = loadTexture ("res/bowl.png");
-	bowl2 = loadTexture ("res/bowl2.png");
+	for (int i=0; i<11; i++) {
+		stringstream ss;
+		ss << "res/bowl" << i << ".png";
+		bowl [i] = loadTexture (ss.str ().c_str ());
+	}
 	poobean1 = loadTexture ("res/poobean.png");
 	poobean2 = loadTexture ("res/poobean2.png");
+	poobean1H = loadTexture ("res/poobeanH.png");
+	poobean2H = loadTexture ("res/poobean2H.png");
 	foodPoint = loadTexture ("res/foodpoint.png"); 
 	foodPointE = loadTexture ("res/foodpointE.png"); 
 	waterPoint = loadTexture ("res/waterpoint.png"); 
@@ -79,6 +89,7 @@ void loadTextures ()
 	healthPointE = loadTexture ("res/healthpointE.png"); 
 	btnFood = loadTexture ("res/btnFood.png");
 	btnWater = loadTexture ("res/btnWater.png");
+	link = loadTexture ("res/link.png");
 }
 
 
@@ -117,7 +128,14 @@ void drawHamsi (PooBean *b)
 		draw (drinking, hamsi->x, hamsi->y, 32, 32);
 		break;
 	case eatingState:
-		draw (omnomnom, hamsi->x, hamsi->y, 32, 32);
+		switch (hamsi->anima) {
+		case 0:
+			draw (omnomnom1, hamsi->x, hamsi->y, 32, 32);
+			break;
+		case 1:
+			draw (omnomnom2, hamsi->x, hamsi->y, 32, 32);
+			break;
+		}
 		break;
 	case wheelingState:
 		switch (hamsi->anima) {
@@ -170,10 +188,7 @@ void drawWheel (PooBean *b)
 
 void drawBowl (PooBean *b)
 {
-	if (bowlFood)
-		draw (bowl2, 720, 350, 63, 57);
-	else
-		draw (bowl, 720, 350, 63, 57);
+	draw (bowl [(int)round(bowlFood)], 720, 350, 63, 57);
 }
 
 void drawBottle (PooBean *unused)
@@ -224,40 +239,51 @@ void drawGameScene ()
 	layers.clear ();
 	layers.insert (new DrawingLayer (layerTree, 0, 200, 470, 200, 470, drawTree));
 	layers.insert (new DrawingLayer (layerHamsi, 0, hamsi->x, hamsi->y, 32, 43, drawHamsi));
-	if (hamsi->state != wheelingState && hamsi->state != goWheelingState)
-		layers.insert (new DrawingLayer (layerWheel, 0, 540, 290, 54, 112, drawWheel));
-	else
-		layers.insert (new DrawingLayer (layerWheel, 0, 540, 270, 54, 132, drawWheel));
-	layers.insert (new DrawingLayer (layerBowl, 0, 540, 290, 54, 112, drawBowl));
-	layers.insert (new DrawingLayer (layerBottle, 0, 540, 290, 54, 112, drawBottle));
+	layers.insert (new DrawingLayer (layerWheel, 0, 540, 290, 54, 112, drawWheel));
+	layers.insert (new DrawingLayer (layerBowl, 0, 720, 350, 64, 53, drawBowl));
+	layers.insert (new DrawingLayer (layerBottle, 0, 750, 500, 54, 112, drawBottle));
 	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++)
 		layers.insert (new DrawingLayer (layerPooBean, *it, (*it)->x, (*it)->y, 16,16, drawBean));
 	for (multiset <DrawingLayer*, layerLess>::iterator it = layers.begin (); it != layers.end (); it++)
 		(*it)->drawFunc ( (*it)->bean );
 	
+	if (hamsi->state == wheelingState || hamsi->state == goWheelingState ||
+		hamsi->state == drinkingState || hamsi->state == goDrinkingState ||
+		hamsi->state == eatingState || hamsi->state == goEatingState
+	)
+		drawHamsi (0);
+	
+	// draw bean hints
+	for (list<PooBean*>::iterator it = pooBeans.begin (); it != pooBeans.end (); it ++) {
+		if ( (*it)->style == 0)
+			draw (poobean1H, (*it)->x, (*it)->y, 16,16);
+		else
+			draw (poobean2H, (*it)->x, (*it)->y, 16,16);
+	}
+	
 	// status bars
 	for (int i = 0; i<10; i++) {
 		Texture *tex;
 		// food
-		if (i < hamsi->food)
+		if (i < round(hamsi->food))
 			tex = foodPoint;
 		else
 			tex = foodPointE;
 		draw (tex, i*28 + 16, 600 - 16, 0, 32);
 		// water
-		if (i < hamsi->water)
+		if (i < round(hamsi->water))
 			tex = waterPoint;
 		else
 			tex = waterPointE;
 		draw (tex, 800 - i*28 - 16, 600 - 16, 32, 32);
 		// power
-		if (i < hamsi->power)
+		if (i < round(hamsi->power))
 			tex = powerPoint;
 		else
 			tex = powerPointE;
 		draw (tex, i*28 + 16, 16, 0, 0);
 		// health
-		if (i < hamsi->health)
+		if (i < round(hamsi->health))
 			tex = healthPoint;
 		else
 			tex = healthPointE;
@@ -266,11 +292,14 @@ void drawGameScene ()
 	
 	// sidebar
 	if (sidebarOut) {
-		draw (btnWater, 800,0, 64,0);
-		draw (btnFood, 800,64, 64,0);
+		draw (btnWater, 800,64, 64,0);
+		draw (btnFood, 800,128, 64,0);
 		lblName1->draw ();
 		lblName2->draw ();
 		lblAge1->draw ();
 		lblAge2->draw ();
+	}
+	else {
+		draw (link, 800, 64, 32, 0);
 	}
 }
