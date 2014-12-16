@@ -767,6 +767,8 @@ void birthStage ()
 			
 			SDL_RenderPresent (renderer);
 		}
+		
+		SDL_Delay (1);
 	}
 	
 	SDL_StopTextInput ();
@@ -873,6 +875,8 @@ void gameStage ()
 			}			
 			SDL_RenderPresent (renderer);
 		}
+		
+		SDL_Delay (1);
 	}
 }
 
